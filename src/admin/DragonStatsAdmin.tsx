@@ -6,8 +6,8 @@ import type { Doc } from "../../convex/_generated/dataModel";
 type StatField = "baseStrength" | "baseIntelligence" | "baseInstinct" | "baseInitiative";
 const STAT_FIELDS: { key: StatField; label: string }[] = [
   { key: "baseStrength", label: "Strength" },
-  { key: "baseIntelligence", label: "Intelligence" },
   { key: "baseInstinct", label: "Instinct" },
+  { key: "baseIntelligence", label: "Intelligence" },
   { key: "baseInitiative", label: "Initiative" },
 ];
 
