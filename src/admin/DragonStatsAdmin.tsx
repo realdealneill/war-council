@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
+import { AdminNav } from "../components/AdminNav";
 import { DragonDetail } from "./DragonDetail";
 
 type StatField = "baseStrength" | "baseIntelligence" | "baseInstinct" | "baseInitiative";
@@ -48,10 +49,10 @@ export function DragonStatsAdmin() {
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
+      <AdminNav current="/admin/dragon-stats" />
       <h1 className="mb-1 text-xl font-bold">Dragon base stats</h1>
       <p className="mb-4 text-sm text-neutral-500">
-        Hidden admin route — not linked from the app. Values save on blur. Blank = leave unset.
-        Click a name to open the star/level/habit calculator.
+        Values save on blur. Blank = leave unset. Click a name to open the star/level/habit calculator.
       </p>
 
       {rows === undefined ? (

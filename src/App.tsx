@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AdminNav } from "./components/AdminNav";
 import { ArmyCard } from "./components/ArmyCard";
 import { FormationBuilder } from "./components/FormationBuilder";
 import { RosterPanel } from "./components/RosterPanel";
@@ -46,6 +47,7 @@ function App() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      <AdminNav current="/" />
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-100">Dragonfire Formations — custom build</h1>
         <p className="text-sm text-neutral-500">

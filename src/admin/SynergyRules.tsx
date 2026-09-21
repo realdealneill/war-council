@@ -1,4 +1,5 @@
 import { DRAGON_KITS } from "../data";
+import { AdminNav } from "../components/AdminNav";
 import { DEFENSE_WEIGHT } from "../engine/power";
 import { SYNERGY_WEIGHTS } from "../engine/scoring";
 import type { EffectId } from "../types";
@@ -43,9 +44,10 @@ export function SynergyRules() {
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
+      <AdminNav current="/admin/synergy-rules" />
       <h1 className="mb-1 text-xl font-bold">Synergy scoring rules</h1>
       <p className="mb-6 text-sm text-neutral-500">
-        Hidden admin route — not linked from the app. Read-only: these are the live weights the app actually
+        Read-only: these are the live weights the app actually
         scores with (src/engine/scoring.ts's SYNERGY_WEIGHTS) and the kit data that feeds them
         (src/data/generated/kits.json) — not a separate copy. To change one, say which and to what.
       </p>
