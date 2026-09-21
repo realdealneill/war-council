@@ -30,14 +30,17 @@ export function useRoster() {
 
   useEffect(() => save(roster), [roster]);
 
+  // One roster slot per species, keyed by name rather than id — the catalog's
+  // id source has already changed once (local JSON -> Convex), and name is
+  // the identity that actually survives that.
   const addDragon = useCallback((dragon: Dragon) => {
-    setRoster((prev) => [...prev, dragon]);
+    setRoster((prev) => (prev.some((d) => d.name === dragon.name) ? prev : [...prev, dragon]));
   }, []);
 
   const addDragons = useCallback((dragons: Dragon[]) => {
     setRoster((prev) => {
-      const existingIds = new Set(prev.map((d) => d.id));
-      return [...prev, ...dragons.filter((d) => !existingIds.has(d.id))];
+      const existingNames = new Set(prev.map((d) => d.name));
+      return [...prev, ...dragons.filter((d) => !existingNames.has(d.name))];
     });
   }, []);
 

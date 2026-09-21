@@ -28,9 +28,9 @@ export interface FlankCandidate {
 function compareCandidates(a: Dragon, b: Dragon): number {
   const pa = dragonPower(a), pb = dragonPower(b);
   if (pb !== pa) return pb - pa;
-  // Real base Instinct isn't in our data yet (see Dragon.instinct) — star
-  // rank is the best stand-in until it is.
-  const ia = a.instinct, ib = b.instinct;
+  // Real base Instinct isn't filled in for every dragon yet (see
+  // Dragon.baseInstinct) — star rank is the best stand-in until it is.
+  const ia = a.baseInstinct, ib = b.baseInstinct;
   if (ia != null && ib != null && ib !== ia) return ib - ia;
   if (b.starRank !== a.starRank) return b.starRank - a.starRank;
   return a.name.localeCompare(b.name);

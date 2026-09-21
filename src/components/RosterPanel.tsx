@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { SEED_DRAGONS } from "../data";
 import { dragonPower } from "../engine/power";
 import type { Dragon } from "../types";
 
@@ -12,6 +11,8 @@ const RARITY_COLOR: Record<string, string> = {
 
 interface RosterPanelProps {
   roster: Dragon[];
+  catalog: Dragon[];
+  catalogLoading: boolean;
   onAdd: (dragon: Dragon) => void;
   onAddAll: (dragons: Dragon[]) => void;
   onRemove: (id: string) => void;
@@ -19,16 +20,15 @@ interface RosterPanelProps {
   onClear: () => void;
 }
 
-export function RosterPanel({ roster, onAdd, onAddAll, onRemove, onToggleActive, onClear }: RosterPanelProps) {
+export function RosterPanel({ roster, catalog, catalogLoading, onAdd, onAddAll, onRemove, onToggleActive, onClear }: RosterPanelProps) {
   const [query, setQuery] = useState("");
-  const rosterIds = useMemo(() => new Set(roster.map((d) => d.id)), [roster]);
+  // Name, not id — the catalog's id source has already changed once (local
+  // JSON -> Convex), and name is the identity that actually survives that.
+  const rosterNames = useMemo(() => new Set(roster.map((d) => d.name)), [roster]);
 
-  const catalog = useMemo(
-    () =>
-      SEED_DRAGONS.filter(
-        (d) => !rosterIds.has(d.id) && d.name.toLowerCase().includes(query.toLowerCase())
-      ),
-    [rosterIds, query]
+  const matches = useMemo(
+    () => catalog.filter((d) => !rosterNames.has(d.name) && d.name.toLowerCase().includes(query.toLowerCase())),
+    [catalog, rosterNames, query]
   );
 
   return (
@@ -37,10 +37,11 @@ export function RosterPanel({ roster, onAdd, onAddAll, onRemove, onToggleActive,
         <h2 className="text-lg font-semibold text-neutral-100">Your Dragons ({roster.length})</h2>
         <div className="flex gap-2">
           <button
-            className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
-            onClick={() => onAddAll(SEED_DRAGONS)}
+            className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-40"
+            disabled={catalog.length === 0}
+            onClick={() => onAddAll(catalog)}
           >
-            Add all ({SEED_DRAGONS.length})
+            Add all ({catalog.length})
           </button>
           {roster.length > 0 && (
             <button
@@ -85,7 +86,7 @@ export function RosterPanel({ roster, onAdd, onAddAll, onRemove, onToggleActive,
           onChange={(e) => setQuery(e.target.value)}
         />
         <ul className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto">
-          {catalog.map((d) => (
+          {matches.map((d) => (
             <li key={d.id}>
               <button
                 className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm text-neutral-300 hover:bg-neutral-800"
@@ -96,7 +97,9 @@ export function RosterPanel({ roster, onAdd, onAddAll, onRemove, onToggleActive,
               </button>
             </li>
           ))}
-          {catalog.length === 0 && <li className="px-2 py-1 text-xs text-neutral-500">No matches.</li>}
+          {matches.length === 0 && (
+            <li className="px-2 py-1 text-xs text-neutral-500">{catalogLoading ? "Loading catalog…" : "No matches."}</li>
+          )}
         </ul>
       </div>
     </section>

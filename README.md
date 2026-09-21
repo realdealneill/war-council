@@ -3,16 +3,25 @@
 A formation optimizer for *Game of Thrones: Dragonfire*, built from scratch
 as a from-first-principles alternative to https://dragonfire-formations.com/.
 
-Stack: React 19 + Vite + TypeScript + Tailwind v4. No backend yet — the
-roster persists to `localStorage` (see [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts)),
-with Convex wiring planned as a follow-up for cross-device sync.
+Stack: React 19 + Vite + TypeScript + Tailwind v4 + Convex. The 36-dragon
+*catalog* (species-level attributes — rarity, breed, role, base stats) lives
+in Convex; your personal *roster* (which dragons you've added, star rank,
+active toggle) stays in `localStorage` (see
+[`src/hooks/useRoster.ts`](src/hooks/useRoster.ts)) — no cross-device sync
+for that yet.
 
 ## Getting started
 
 ```bash
 npm install
+npx convex dev    # first run creates a dev deployment + .env.local
 npm run dev
 ```
+
+The Convex dev server needs to be running (or at least deployed once) for
+the app to load any dragons — `src/hooks/useCatalog.ts` reads the `dragons`
+table via `VITE_CONVEX_URL`. If that table is ever empty, re-seed it from
+the original reference data with `npx convex run dragons:seed`.
 
 ## Layout
 
@@ -25,7 +34,13 @@ npm run dev
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
   - `scoring.ts` — `evaluatePlacement()` / `bestArmy()`, the synergy model
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
-- [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster persistence
+- [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
+  the `dragons` catalog table + `list`/`updateStats`/`seed` functions
+- [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
+- [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster persistence (local)
+- [`src/admin/DragonStatsAdmin.tsx`](src/admin/DragonStatsAdmin.tsx) — dense
+  base-stat entry form at the hidden `/admin/dragon-stats` route (not linked
+  from the app; see `src/main.tsx`)
 - [`src/components/`](src/components) — UI
 
 ## `reference/`

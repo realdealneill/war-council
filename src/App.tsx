@@ -6,6 +6,7 @@ import { VanguardPicker } from "./components/VanguardPicker";
 import { MODEL } from "./data";
 import { NON_SIEGE_TROOP_OPTIONS } from "./engine/constants";
 import { optimize } from "./engine/optimizer";
+import { useCatalog } from "./hooks/useCatalog";
 import { useRoster } from "./hooks/useRoster";
 import type { Dragon, Goal, OptimizeResult, TroopType } from "./types";
 
@@ -19,6 +20,7 @@ const GOAL_HINT: Record<Goal, string> = {
 
 function App() {
   const { roster, addDragon, addDragons, removeDragon, toggleActive, clearRoster } = useRoster();
+  const { catalog, loading: catalogLoading } = useCatalog();
   const [mode, setMode] = useState<FormationMode>("optimize");
   const [goal, setGoal] = useState<Goal>("balanced");
   const [numArmies, setNumArmies] = useState(3);
@@ -55,6 +57,8 @@ function App() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <RosterPanel
           roster={roster}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
           onAdd={addDragon}
           onAddAll={addDragons}
           onRemove={removeDragon}
