@@ -20,6 +20,7 @@ function FlankSlot({
   flank,
   selected,
   pool,
+  otherFlankDragon,
   onSelect,
   onClear,
 }: {
@@ -28,12 +29,16 @@ function FlankSlot({
   flank: Slot;
   selected: Dragon | null;
   pool: Dragon[];
+  otherFlankDragon: Dragon | null;
   onSelect: (d: Dragon) => void;
   onClear: () => void;
 }) {
   const buffed = isBuffedFlank(vanguard.name, flank);
   const reqType = buffed ? flankDamageType(vanguard.name) : null;
-  const ranked = useMemo(() => rankFlankCandidates(vanguard, flank, pool), [vanguard, flank, pool]);
+  const ranked = useMemo(
+    () => rankFlankCandidates(vanguard, flank, pool, otherFlankDragon),
+    [vanguard, flank, pool, otherFlankDragon]
+  );
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
@@ -52,26 +57,40 @@ function FlankSlot({
           </button>
         </div>
       ) : (
-        <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-          {ranked.map(({ dragon: d, fits }) => (
-            <li key={d.id}>
-              <button
-                className={`flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left text-sm hover:bg-neutral-800/60 ${
-                  fits ? "border-emerald-800" : "border-neutral-800"
-                }`}
-                onClick={() => onSelect(d)}
-              >
-                <span className="flex items-center gap-1.5">
-                  {fits && <span className="text-emerald-400">✓</span>}
-                  <span className="text-neutral-100">{d.name}</span>
-                  <span className="text-xs text-neutral-500">{roleName(d.role)}</span>
-                </span>
-                <span className="text-xs text-neutral-500">{Math.round(dragonPower(d))}</span>
-              </button>
-            </li>
-          ))}
-          {ranked.length === 0 && <li className="px-2 py-1 text-xs text-neutral-500">No other dragons available.</li>}
-        </ul>
+        <>
+          <div className="flex items-center justify-between px-2 text-[10px] uppercase text-neutral-600">
+            <span>Dragon</span>
+            <span className="flex gap-3">
+              <span className="w-12 text-right">Power</span>
+              <span className="w-14 text-right">Synergy</span>
+            </span>
+          </div>
+          <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+            {ranked.map(({ dragon: d, fits, synergyPct }) => (
+              <li key={d.id}>
+                <button
+                  className={`flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left text-sm hover:bg-neutral-800/60 ${
+                    fits ? "border-emerald-800" : "border-neutral-800"
+                  }`}
+                  onClick={() => onSelect(d)}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {fits && <span className="text-emerald-400">✓</span>}
+                    <span className="text-neutral-100">{d.name}</span>
+                    <span className="text-xs text-neutral-500">{roleName(d.role)}</span>
+                  </span>
+                  <span className="flex gap-3 text-xs">
+                    <span className="w-12 text-right text-neutral-500">{Math.round(dragonPower(d))}</span>
+                    <span className={`w-14 text-right ${synergyPct != null ? "text-violet-300" : "text-neutral-600"}`}>
+                      {synergyPct != null ? `+${(synergyPct * 100).toFixed(1)}%` : "—"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+            {ranked.length === 0 && <li className="px-2 py-1 text-xs text-neutral-500">No other dragons available.</li>}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -113,8 +132,8 @@ export function FormationBuilder({ vanguard, roster, onChangeVanguard }: Formati
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FlankSlot label="Left Flank" vanguard={vanguard} flank="left" selected={left} pool={leftPool} onSelect={(d) => setLeftId(d.id)} onClear={() => setLeftId(null)} />
-        <FlankSlot label="Right Flank" vanguard={vanguard} flank="right" selected={right} pool={rightPool} onSelect={(d) => setRightId(d.id)} onClear={() => setRightId(null)} />
+        <FlankSlot label="Left Flank" vanguard={vanguard} flank="left" selected={left} pool={leftPool} otherFlankDragon={right} onSelect={(d) => setLeftId(d.id)} onClear={() => setLeftId(null)} />
+        <FlankSlot label="Right Flank" vanguard={vanguard} flank="right" selected={right} pool={rightPool} otherFlankDragon={left} onSelect={(d) => setRightId(d.id)} onClear={() => setRightId(null)} />
       </div>
 
       {preview && <ArmyCard army={{ dragons: [left!, vanguard, right!], locks: { left: left!, vanguard, right: right! }, eval: preview }} index={0} />}
