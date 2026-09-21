@@ -11,6 +11,13 @@ import type { Rarity } from "../types";
 // (25%) is extrapolated from the +5%-per-tier pattern, not yet real.
 const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
+// ★7-10 each give an extra +5% on top of the rarity rate, for every rarity —
+// this is exactly what reconciles the legendary 20% base rate with the real
+// ★7 (125%) and ★8 (150%) data: ★2-6 contribute 20% each (5 stars = 100% by
+// ★6), then ★7/★8 contribute 25% each (100%+25%=125%, +25%=150%).
+const LATE_STAR_THRESHOLD = 7;
+const DEFAULT_LATE_STAR_BONUS_PCT = 0.05;
+
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
   baseStrength: "Strength",
@@ -38,6 +45,7 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
   const [powerStarPct, setPowerStarPct] = useState(0.15); // matches the existing, already-verified Power formula
   const [habitPowerPct, setHabitPowerPct] = useState(0.01);
   const [statStarPctByRarity, setStatStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_STAT_STAR_PCT);
+  const [lateStarBonusPct, setLateStarBonusPct] = useState(DEFAULT_LATE_STAR_BONUS_PCT);
   const statStarPct = statStarPctByRarity[dragon.rarity];
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
@@ -49,9 +57,13 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
   const basePower = Math.round((rarityCoef * starMult * level) / 10) * 10;
   const finalPower = Math.round(basePower * habitMult);
 
-  // ★1 has no bonus; the rarity rate applies once per star from ★2 on.
+  // ★1 has no bonus; the rarity rate applies once per star from ★2 on, and
+  // ★7-10 each additionally get lateStarBonusPct on top of that rate.
   const bonusStars = Math.max(0, starRank - 1);
-  const statMult = 1 + statStarPct * bonusStars;
+  const lateStars = Math.max(0, starRank - (LATE_STAR_THRESHOLD - 1));
+  const regularStars = bonusStars - lateStars;
+  const statBonusPct = regularStars * statStarPct + lateStars * (statStarPct + lateStarBonusPct);
+  const statMult = 1 + statBonusPct;
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
@@ -144,6 +156,16 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
                 />
               </label>
             ))}
+            <label className="mb-2 mt-3 flex items-center justify-between gap-2 text-sm">
+              Extra stat % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}
+              <input
+                type="number"
+                step={0.01}
+                value={lateStarBonusPct}
+                onChange={(e) => setLateStarBonusPct(Number(e.target.value) || 0)}
+                className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right"
+              />
+            </label>
             <p className="mt-2 text-xs text-neutral-500">
               Stats don't move with Level. Mythic (25%) is extrapolated from the +5%-per-tier pattern — not yet real.
             </p>
@@ -167,7 +189,9 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
             <h2 className="mb-2 text-sm font-semibold text-neutral-200">Stats</h2>
             <div className="mb-2 font-mono text-xs text-neutral-500">
-              projected = base × (1 + {statStarPct}×{bonusStars} stars from ★2 on) = base × {statMult.toFixed(3)}
+              projected = base × (1 + {statStarPct}×{regularStars} stars ★2–{LATE_STAR_THRESHOLD - 1}
+              {lateStars > 0 && <> + {(statStarPct + lateStarBonusPct).toFixed(2)}×{lateStars} stars ★{LATE_STAR_THRESHOLD}+</>}
+              ) = base × {statMult.toFixed(3)}
             </div>
             <table className="w-full text-sm">
               <thead>
