@@ -20,7 +20,6 @@ const SCALAR_WEIGHTS: { key: keyof typeof SYNERGY_WEIGHTS; label: string; note: 
   { key: "mitigationValue", label: "Mitigation value", note: "How much a Vanguard mitigation buff counts, relative to raw damage" },
   { key: "recoveryValue", label: "Recovery value", note: "How much a Vanguard recovery buff counts" },
   { key: "statPointValue", label: "Stat point value", note: "Value of +1 to a raw stat (e.g. Instinct) from a Vanguard buff" },
-  { key: "vanguardTaunt", label: "Vanguard taunts", note: "Vanguard applies Taunt — soaks damage for the flanks" },
   { key: "positionFitRightPhysical", label: "Right Flank fit", note: "Physical DPS correctly on the Right Flank" },
   { key: "positionFitLeftSupport", label: "Left Flank fit", note: "Tactical/Fire/Healer correctly on the Left Flank" },
   { key: "positionFitVanguardTank", label: "Vanguard fit", note: "Tank correctly in the Vanguard" },

@@ -40,7 +40,6 @@ export const SYNERGY_WEIGHTS = {
   mitigationValue: 0.5,
   recoveryValue: 0.35,
   statPointValue: 0.002,
-  vanguardTaunt: 0.1, // Vanguard applies Taunt — soaks damage for the flanks
 
   // --- 3. Role-position fit ---
   positionFitRightPhysical: 0.05, // Physical DPS correctly on Right Flank
@@ -209,7 +208,6 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
         warnings.push(`${vg.name}'s Vanguard skill buffs the ${flankName}, which is empty.`);
       }
     }
-    if (applies(vg, "taunt")) add(`${vg.name} taunts from the Vanguard — soaks damage for your flanks`, W.vanguardTaunt * defense);
   } else {
     warnings.push("No Vanguard dragon assigned.");
   }
