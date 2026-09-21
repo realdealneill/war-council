@@ -2,6 +2,14 @@ import { useState } from "react";
 import { MODEL } from "../data";
 import { RARITY_COEF } from "../engine/power";
 import type { Doc } from "../../convex/_generated/dataModel";
+import type { Rarity } from "../types";
+
+// Confirmed from real 6★/7★/8★ legendary data: a flat +X% of base per star
+// above ★2 (100%/125%/150% bonus at 6/7/8 — exactly linear), and stats don't
+// move with Level at all. The per-rarity rate below 25% is extrapolated from
+// your read of the pattern, not yet confirmed against rare/epic dragons —
+// tune these as you get real numbers for those.
+const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.15, epic: 0.2, legendary: 0.25, mythic: 0.3 };
 
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
@@ -29,10 +37,8 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
   // game client, rather than editing formulas in code.
   const [powerStarPct, setPowerStarPct] = useState(0.15); // matches the existing, already-verified Power formula
   const [habitPowerPct, setHabitPowerPct] = useState(0.01);
-  // Confirmed from real 6*/7*/8* data: stats gain a flat +25% of base per
-  // star above 2 stars (100%/125%/150% bonus at 6/7/8 — exactly linear),
-  // and don't move with Level at all.
-  const [statStarPct, setStatStarPct] = useState(0.25);
+  const [statStarPctByRarity, setStatStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_STAT_STAR_PCT);
+  const statStarPct = statStarPctByRarity[dragon.rarity];
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
   const totalHabitLevels = habitLevels.reduce((sum, lvl, i) => sum + (unlockedHabits[i] ? lvl : 0), 0);
@@ -119,11 +125,27 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               Power % per habit level
               <input type="number" step={0.005} value={habitPowerPct} onChange={(e) => setHabitPowerPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
-            <label className="flex items-center justify-between gap-2 text-sm">
-              Stat % per star (above ★2)
-              <input type="number" step={0.01} value={statStarPct} onChange={(e) => setStatStarPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
-            </label>
-            <p className="mt-2 text-xs text-neutral-500">Stats don't move with Level — confirmed from your 6★/7★/8★ numbers.</p>
+            <h3 className="mb-2 mt-3 text-xs font-semibold uppercase text-neutral-500">Stat % per star (above ★2), by rarity</h3>
+            {(Object.keys(statStarPctByRarity) as Rarity[]).map((rarity) => (
+              <label
+                key={rarity}
+                className={`mb-2 flex items-center justify-between gap-2 text-sm ${rarity === dragon.rarity ? "text-violet-300" : ""}`}
+              >
+                {rarity} {rarity === dragon.rarity && "←"}
+                <input
+                  type="number"
+                  step={0.01}
+                  value={statStarPctByRarity[rarity]}
+                  onChange={(e) =>
+                    setStatStarPctByRarity((prev) => ({ ...prev, [rarity]: Number(e.target.value) || 0 }))
+                  }
+                  className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right"
+                />
+              </label>
+            ))}
+            <p className="mt-2 text-xs text-neutral-500">
+              Stats don't move with Level. Only legendary (25%) is confirmed from real numbers so far — rare/epic/mythic are extrapolated guesses.
+            </p>
           </div>
         </div>
 
@@ -170,9 +192,9 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               </tbody>
             </table>
             <p className="mt-2 text-xs text-neutral-500">
-              "Base" is whatever you entered on the list page. The 6★/7★/8★ data fits a flat +25% of base per
-              star above ★2 — meaning ★1 and ★2 project to the same value — so treat "base" as this dragon's
-              stat at ★2 or below until you've confirmed ★1 separately. Blank stats show as "—".
+              "Base" is whatever you entered on the list page. This formula means ★1 and ★2 project to the
+              same value, so treat "base" as this dragon's stat at ★2 or below until you've confirmed ★1
+              separately. Blank stats show as "—".
             </p>
           </div>
         </div>
