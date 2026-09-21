@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { MODEL } from "../data";
-import { RARITY_COEF } from "../engine/power";
 import type { Doc } from "../../convex/_generated/dataModel";
 import type { Rarity } from "../types";
 
@@ -11,12 +10,20 @@ import type { Rarity } from "../types";
 // (25%) is extrapolated from the +5%-per-tier pattern, not yet real.
 const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
-// ★7-10 each give an extra +5% on top of the rarity rate, for every rarity —
-// this is exactly what reconciles the legendary 20% base rate with the real
-// ★7 (125%) and ★8 (150%) data: ★2-6 contribute 20% each (5 stars = 100% by
-// ★6), then ★7/★8 contribute 25% each (100%+25%=125%, +25%=150%).
+// ★7-10 each give an extra bonus on top of the rarity rate — for stats this
+// is confirmed (it's what reconciles the legendary 20% base rate with real
+// ★7/★8 data: ★2-6 contribute 20% each, ★7/★8 contribute 25% each). Power
+// uses the same shape as a starting hypothesis, not yet confirmed.
 const LATE_STAR_THRESHOLD = 7;
 const DEFAULT_LATE_STAR_BONUS_PCT = 0.05;
+
+// Power's rarity coefficient and star rate — seeded from the existing (already
+// somewhat-verified, ~5%-accurate per its own original comment) engine
+// formula and the same per-rarity pattern the stats turned out to have, but
+// this whole page is an explicit, separate calculation Neill is refitting —
+// see the component doc comment below.
+const DEFAULT_POWER_RARITY_BASE: Record<Rarity, number> = { rare: 300, epic: 410, legendary: 540, mythic: 700 };
+const DEFAULT_POWER_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
@@ -28,42 +35,82 @@ const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
 
 const MAX_STAR = 10;
 
+/** Regular vs. late (★7+) star counts, and the resulting bonus %, for a flat "pct per star from ★2 on, +extra for ★7-10" model. */
+function tieredStarBonus(starRank: number, pct: number, lateExtraPct: number) {
+  const bonusStars = Math.max(0, starRank - 1);
+  const lateStars = Math.max(0, starRank - (LATE_STAR_THRESHOLD - 1));
+  const regularStars = bonusStars - lateStars;
+  return { regularStars, lateStars, bonusPct: regularStars * pct + lateStars * (pct + lateExtraPct) };
+}
+
+function RarityTable({
+  values,
+  onChange,
+  current,
+  step = 0.01,
+}: {
+  values: Record<Rarity, number>;
+  onChange: (rarity: Rarity, value: number) => void;
+  current: Rarity;
+  step?: number;
+}) {
+  return (
+    <>
+      {(Object.keys(values) as Rarity[]).map((rarity) => (
+        <label
+          key={rarity}
+          className={`mb-2 flex items-center justify-between gap-2 text-sm ${rarity === current ? "text-violet-300" : ""}`}
+        >
+          {rarity} {rarity === current && "←"}
+          <input
+            type="number"
+            step={step}
+            value={values[rarity]}
+            onChange={(e) => onChange(rarity, Number(e.target.value) || 0)}
+            className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right"
+          />
+        </label>
+      ))}
+    </>
+  );
+}
+
 /**
  * A pure client-side "what if" sandbox — nothing here writes to Convex.
- * Nothing in engine/ uses this formula yet either: it's deliberately kept
- * separate from the real scoring engine until these growth-rate constants
- * are actually confirmed against the live game client, so experimenting
- * here can't silently change army scores elsewhere in the app.
+ * Nothing in engine/ uses either formula below yet: Power and Stats are
+ * each their own separate, fully-tunable calculation kept apart from the
+ * real scoring engine until confirmed against the live game client, so
+ * experimenting here can't silently change army scores elsewhere in the app.
  */
 export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBack: () => void }) {
   const [starRank, setStarRank] = useState(3);
   const [level, setLevel] = useState(15);
   const [habitLevels, setHabitLevels] = useState<number[]>([1, 1, 1, 1, 1]);
 
-  // Tunable growth-rate guesses — adjust these while comparing against your
-  // game client, rather than editing formulas in code.
-  const [powerStarPct, setPowerStarPct] = useState(0.15); // matches the existing, already-verified Power formula
-  const [habitPowerPct, setHabitPowerPct] = useState(0.01);
+  // --- Power: rarityBase(rarity) × starMult(rarity, star) × level × habitMult ---
+  const [powerRarityBase, setPowerRarityBase] = useState<Record<Rarity, number>>(DEFAULT_POWER_RARITY_BASE);
+  const [powerStarPctByRarity, setPowerStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_POWER_STAR_PCT);
+  const [powerLateStarBonusPct, setPowerLateStarBonusPct] = useState(DEFAULT_LATE_STAR_BONUS_PCT);
+  const [powerHabitPct, setPowerHabitPct] = useState(0.01);
+
+  // --- Stats: base × starMult(rarity, star) only — no Level, no Habits ---
   const [statStarPctByRarity, setStatStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_STAT_STAR_PCT);
   const [lateStarBonusPct, setLateStarBonusPct] = useState(DEFAULT_LATE_STAR_BONUS_PCT);
-  const statStarPct = statStarPctByRarity[dragon.rarity];
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
   const totalHabitLevels = habitLevels.reduce((sum, lvl, i) => sum + (unlockedHabits[i] ? lvl : 0), 0);
 
-  const rarityCoef = RARITY_COEF[dragon.rarity];
-  const starMult = 1 + powerStarPct * starRank;
-  const habitMult = 1 + habitPowerPct * totalHabitLevels;
-  const basePower = Math.round((rarityCoef * starMult * level) / 10) * 10;
-  const finalPower = Math.round(basePower * habitMult);
+  // Power
+  const rarityBase = powerRarityBase[dragon.rarity];
+  const powerStar = tieredStarBonus(starRank, powerStarPctByRarity[dragon.rarity], powerLateStarBonusPct);
+  const powerStarMult = 1 + powerStar.bonusPct;
+  const powerHabitMult = 1 + powerHabitPct * totalHabitLevels;
+  const rawPower = rarityBase * powerStarMult * level * powerHabitMult;
+  const totalPower = Math.round(rawPower / 10) * 10;
 
-  // ★1 has no bonus; the rarity rate applies once per star from ★2 on, and
-  // ★7-10 each additionally get lateStarBonusPct on top of that rate.
-  const bonusStars = Math.max(0, starRank - 1);
-  const lateStars = Math.max(0, starRank - (LATE_STAR_THRESHOLD - 1));
-  const regularStars = bonusStars - lateStars;
-  const statBonusPct = regularStars * statStarPct + lateStars * (statStarPct + lateStarBonusPct);
-  const statMult = 1 + statBonusPct;
+  // Stats
+  const statStar = tieredStarBonus(starRank, statStarPctByRarity[dragon.rarity], lateStarBonusPct);
+  const statMult = 1 + statStar.bonusPct;
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
@@ -129,45 +176,34 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
           </div>
 
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Growth-rate guesses (editable)</h2>
-            <label className="mb-2 flex items-center justify-between gap-2 text-sm">
-              Power % per star
-              <input type="number" step={0.01} value={powerStarPct} onChange={(e) => setPowerStarPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
+            <h2 className="mb-1 text-sm font-semibold text-neutral-200">Power growth-rate guesses</h2>
+            <p className="mb-2 text-xs text-neutral-500">
+              Totally separate from Stats below — its own rarity base, star rate, and habit rate.
+            </p>
+            <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Rarity base power</h3>
+            <RarityTable values={powerRarityBase} current={dragon.rarity} step={10} onChange={(r, v) => setPowerRarityBase((p) => ({ ...p, [r]: v }))} />
+            <h3 className="mb-1 mt-3 text-xs font-semibold uppercase text-neutral-500">Power % per star (from ★2 on)</h3>
+            <RarityTable values={powerStarPctByRarity} current={dragon.rarity} onChange={(r, v) => setPowerStarPctByRarity((p) => ({ ...p, [r]: v }))} />
+            <label className="mb-2 mt-3 flex items-center justify-between gap-2 text-sm">
+              Extra power % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}
+              <input type="number" step={0.01} value={powerLateStarBonusPct} onChange={(e) => setPowerLateStarBonusPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
-            <label className="mb-2 flex items-center justify-between gap-2 text-sm">
+            <label className="flex items-center justify-between gap-2 text-sm">
               Power % per habit level
-              <input type="number" step={0.005} value={habitPowerPct} onChange={(e) => setHabitPowerPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
+              <input type="number" step={0.005} value={powerHabitPct} onChange={(e) => setPowerHabitPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
-            <h3 className="mb-2 mt-3 text-xs font-semibold uppercase text-neutral-500">Stat % per star (from ★2 on), by rarity</h3>
-            {(Object.keys(statStarPctByRarity) as Rarity[]).map((rarity) => (
-              <label
-                key={rarity}
-                className={`mb-2 flex items-center justify-between gap-2 text-sm ${rarity === dragon.rarity ? "text-violet-300" : ""}`}
-              >
-                {rarity} {rarity === dragon.rarity && "←"}
-                <input
-                  type="number"
-                  step={0.01}
-                  value={statStarPctByRarity[rarity]}
-                  onChange={(e) =>
-                    setStatStarPctByRarity((prev) => ({ ...prev, [rarity]: Number(e.target.value) || 0 }))
-                  }
-                  className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right"
-                />
-              </label>
-            ))}
+          </div>
+
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
+            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Stat growth-rate guesses</h2>
+            <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Stat % per star (from ★2 on)</h3>
+            <RarityTable values={statStarPctByRarity} current={dragon.rarity} onChange={(r, v) => setStatStarPctByRarity((p) => ({ ...p, [r]: v }))} />
             <label className="mb-2 mt-3 flex items-center justify-between gap-2 text-sm">
               Extra stat % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}
-              <input
-                type="number"
-                step={0.01}
-                value={lateStarBonusPct}
-                onChange={(e) => setLateStarBonusPct(Number(e.target.value) || 0)}
-                className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right"
-              />
+              <input type="number" step={0.01} value={lateStarBonusPct} onChange={(e) => setLateStarBonusPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
             <p className="mt-2 text-xs text-neutral-500">
-              Stats don't move with Level. Mythic (25%) is extrapolated from the +5%-per-tier pattern — not yet real.
+              Stats don't move with Level or Habits. Mythic (25%) is extrapolated from the +5%-per-tier pattern — not yet real.
             </p>
           </div>
         </div>
@@ -175,22 +211,24 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
         {/* Results */}
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-violet-800 bg-violet-950/20 p-4">
-            <h2 className="mb-2 text-sm font-semibold text-violet-200">Power</h2>
+            <h2 className="mb-2 text-sm font-semibold text-violet-200">Total Power</h2>
             <div className="font-mono text-xs text-neutral-400">
-              {rarityCoef} (rarity) × {starMult.toFixed(3)} (1 + {powerStarPct}×{starRank} star) × {level} (level) / 10 × 10
-              {" "}= {basePower.toLocaleString()}
+              {rarityBase.toLocaleString()} (★{dragon.rarity} base)
+              {" × "}
+              {powerStarMult.toFixed(3)} (1 + {powerStarPctByRarity[dragon.rarity]}×{powerStar.regularStars} stars ★2–{LATE_STAR_THRESHOLD - 1}
+              {powerStar.lateStars > 0 && <> + {(powerStarPctByRarity[dragon.rarity] + powerLateStarBonusPct).toFixed(2)}×{powerStar.lateStars} stars ★{LATE_STAR_THRESHOLD}+</>})
             </div>
             <div className="font-mono text-xs text-neutral-400">
-              × {habitMult.toFixed(3)} (1 + {habitPowerPct}×{totalHabitLevels} habit levels)
+              × {level} (level) × {powerHabitMult.toFixed(3)} (1 + {powerHabitPct}×{totalHabitLevels} habit levels)
             </div>
-            <div className="mt-2 text-2xl font-bold text-neutral-100">{finalPower.toLocaleString()}</div>
+            <div className="mt-2 text-2xl font-bold text-neutral-100">{totalPower.toLocaleString()}</div>
           </div>
 
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
             <h2 className="mb-2 text-sm font-semibold text-neutral-200">Stats</h2>
             <div className="mb-2 font-mono text-xs text-neutral-500">
-              projected = base × (1 + {statStarPct}×{regularStars} stars ★2–{LATE_STAR_THRESHOLD - 1}
-              {lateStars > 0 && <> + {(statStarPct + lateStarBonusPct).toFixed(2)}×{lateStars} stars ★{LATE_STAR_THRESHOLD}+</>}
+              projected = base × (1 + {statStarPctByRarity[dragon.rarity]}×{statStar.regularStars} stars ★2–{LATE_STAR_THRESHOLD - 1}
+              {statStar.lateStars > 0 && <> + {(statStarPctByRarity[dragon.rarity] + lateStarBonusPct).toFixed(2)}×{statStar.lateStars} stars ★{LATE_STAR_THRESHOLD}+</>}
               ) = base × {statMult.toFixed(3)}
             </div>
             <table className="w-full text-sm">
