@@ -1,34 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Dragon } from "../types";
 
-const STORAGE_KEY = "dragonfire:roster";
-
-function load(): Dragon[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Dragon[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function save(roster: Dragon[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(roster));
-  } catch {
-    // localStorage unavailable (private browsing, quota) — roster just won't persist.
-  }
-}
-
 /**
- * Local-only roster persistence, same storage model as the reference site's
- * offline mode. Swap this hook's internals for a Convex-backed one later
- * without touching callers — the return shape is the seam.
+ * In-memory only — resets on every reload. There's no roster-saving feature
+ * yet, and localStorage snapshotted whole Dragon objects at add-time, so a
+ * catalog fix (e.g. a corrected default star rank) couldn't reach anyone's
+ * already-added dragons without them removing and re-adding. Once a real
+ * save feature exists (almost certainly Convex-backed, per-user), it should
+ * store just a roster's dragon ids/overrides and re-join against the live
+ * catalog on load — not a frozen copy like this used to be.
  */
 export function useRoster() {
-  const [roster, setRoster] = useState<Dragon[]>(() => load());
-
-  useEffect(() => save(roster), [roster]);
+  const [roster, setRoster] = useState<Dragon[]>([]);
 
   // One roster slot per species, keyed by name rather than id — the catalog's
   // id source has already changed once (local JSON -> Convex), and name is

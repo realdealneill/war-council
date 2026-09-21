@@ -5,10 +5,14 @@ as a from-first-principles alternative to https://dragonfire-formations.com/.
 
 Stack: React 19 + Vite + TypeScript + Tailwind v4 + Convex. The 36-dragon
 *catalog* (species-level attributes — rarity, breed, role, base stats) lives
-in Convex; your personal *roster* (which dragons you've added, star rank,
-active toggle) stays in `localStorage` (see
-[`src/hooks/useRoster.ts`](src/hooks/useRoster.ts)) — no cross-device sync
-for that yet.
+in Convex. Your personal *roster* (which dragons you've added, star rank,
+active toggle) is in-memory only for now (see
+[`src/hooks/useRoster.ts`](src/hooks/useRoster.ts)) — it resets on every
+reload. There's no roster-saving feature yet; when there is, it should be
+Convex-backed and store just ids/overrides re-joined against the live
+catalog, not a frozen snapshot (a localStorage version of that snapshot
+approach is what this replaced, and it went stale the moment the catalog's
+own defaults changed).
 
 ## Getting started
 
@@ -37,7 +41,7 @@ the original reference data with `npx convex run dragons:seed`.
 - [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
-- [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster persistence (local)
+- [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
 - [`src/admin/DragonStatsAdmin.tsx`](src/admin/DragonStatsAdmin.tsx) — dense
   base-stat entry form at the hidden `/admin/dragon-stats` route (not linked
   from the app; see `src/main.tsx`)

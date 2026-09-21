@@ -49,7 +49,7 @@ function App() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-100">Dragonfire Formations — custom build</h1>
         <p className="text-sm text-neutral-500">
-          Game of Thrones: Dragonfire formation optimizer. Local-only roster for now — see{" "}
+          Game of Thrones: Dragonfire formation optimizer. Your roster isn't saved yet — it resets on reload — see{" "}
           <code className="text-neutral-400">reference/</code> for the site this started from.
         </p>
       </header>
