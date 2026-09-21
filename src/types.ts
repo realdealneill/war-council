@@ -4,7 +4,7 @@ export type Rarity = "rare" | "epic" | "legendary" | "mythic";
 export type DamageType = "physical" | "tactical" | "fire" | "none";
 export type Role = "tank" | "physical" | "tactical" | "fire" | "healer" | "control";
 export type Breed = "champion" | "hunter" | "sentinel" | "warrior";
-export type Goal = "balanced" | "siege" | "dps";
+export type Goal = "balanced" | "synergy" | "dps";
 export type Affinity = "+" | "-" | 0;
 
 export type EffectId =
@@ -85,7 +85,10 @@ export interface SynergyEntry {
 }
 
 export interface ArmyEvaluation {
+  /** True effective power (basePower + synergy bonus) — what's shown to the user. */
   score: number;
+  /** What the optimizer actually ranks armies by; equals `score` except under the "synergy" goal, which weights the bonus more heavily so kit synergy can outrank raw power. */
+  rankScore: number;
   basePower: number;
   rawPower: number;
   bonusPct: number;

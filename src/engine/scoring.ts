@@ -8,7 +8,7 @@
 // — it only decorates a label. See section 1b below.
 import { MODEL } from "../data";
 import { dragonEffects, appliesControl, holds, isDPS, supplies } from "./effects";
-import { DEFENSE_WEIGHT, dragonPower, goalPower, goalShare } from "./power";
+import { DEFENSE_WEIGHT, dragonPower } from "./power";
 import type {
   ArmyEvaluation, Dragon, EffectId, Goal, Placement, SynergyEntry, TroopType, VanguardSkill,
 } from "../types";
@@ -29,6 +29,12 @@ const MITIGATION_VALUE = 0.5;
 const RECOVERY_VALUE = 0.35;
 const STAT_POINT_VALUE = 0.002;
 
+// How much more heavily the "Dragon Synergy" goal weighs the synergy bonus
+// against raw power when RANKING armies, so a well-connected trio of kits
+// can outrank three dragons with bigger numbers but nothing feeding each
+// other. The true effective power (`score`) shown to the user is unaffected.
+const SYNERGY_EMPHASIS: Record<Goal, number> = { balanced: 1, dps: 1, synergy: 3 };
+
 const WANT_VALUE: Partial<Record<EffectId, number>> = {
   control: 0.08, panic: 0.07, burn: 0.06, vulnerable: 0.06, taunt: 0.05,
   slow: 0.04, bleed: 0.04, weakened: 0.04,
@@ -42,10 +48,6 @@ const EFFECT_NAME: Partial<Record<EffectId, string>> = {
   advantage: "Advantage", resistance: "Resistance", firstStrike: "First Strike",
   recovery: "Recovery", sentinel: "a Tactical/Recovery Sentinel",
 };
-
-function roleLabel(d: Dragon): string {
-  return MODEL.ROLES.find((r) => r.id === d.role)?.name ?? d.role;
-}
 
 function vanguardFor(d: Dragon): VanguardSkill | null {
   return DRAGON_KITS[d.name]?.vanguard ?? null;
@@ -96,11 +98,11 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   const goal = opts.goal ?? "balanced";
   const dragons = SLOTS.map((s) => placement[s]).filter((d): d is Dragon => Boolean(d));
   if (dragons.length === 0) {
-    return { score: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement, troopType };
+    return { score: 0, rankScore: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement, troopType };
   }
 
   const defense = DEFENSE_WEIGHT[goal] ?? 1;
-  const pw = (d: Dragon) => goalPower(d, goal);
+  const pw = dragonPower;
   const rawPower = dragons.reduce((s, d) => s + dragonPower(d), 0);
   const basePower = dragons.reduce((s, d) => s + pw(d), 0);
   const synergies: SynergyEntry[] = [];
@@ -181,10 +183,14 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   if (right && right.role === "tank") warnings.push(`${right.name} is a Tank but on the Right Flank — usually better in Vanguard.`);
 
   // --- 4. Kit synergies: what each dragon needs vs what the others supply ---
+  const wantsMet = new Set<string>();
+  const suppliedBy = new Set<string>();
   dragons.forEach((d) => {
     dragonEffects(d).wants.forEach((want) => {
       const source = dragons.find((o) => o !== d && supplies(o, want));
       if (!source) return;
+      wantsMet.add(d.id);
+      suppliedBy.add(source.id);
       const name = EFFECT_NAME[want] ?? want;
       add(`${d.name} hits harder with ${name} — supplied by ${source.name}`, WANT_VALUE[want] ?? 0.05, pw(d));
     });
@@ -237,27 +243,23 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   });
 
   // --- 6. Formation goal emphasis ---
-  if (goal === "siege") {
-    const ampl = dragons.filter((d) =>
-      applies(d, "vulnerable") || applies(d, "weakened") || applies(d, "burn") ||
-      grantsEffect(d, "advantage") || holds(d, "doubleStrike") || holds(d, "mirage") || holds(d, "risingTide")
-    );
-    ampl.forEach((d) => add(`${d.name} multiplies this army's damage output`, 0.05, pw(d)));
-    dragons.forEach((d) => {
-      const share = goalShare(d, goal);
-      if (share < 1) {
-        warnings.push(`${d.name} (${roleLabel(d)}) only converts about ${Math.round(share * 100)}% of its power into siege damage — a structure never attacks back.`);
-      }
-    });
-  } else if (goal === "dps") {
+  if (goal === "dps") {
     const dealers = dragons.filter(isDPS).length;
     if (dealers) add(`DPS focus: ${dealers} damage dealer(s)`, 0.05 * dealers);
     const ampl = dragons.filter((d) => applies(d, "vulnerable") || applies(d, "burn") || holds(d, "doubleStrike") || holds(d, "mirage") || grantsEffect(d, "advantage")).length;
     if (ampl) add(`Offensive kit: ${ampl} damage-amplifying dragon(s)`, 0.03 * ampl);
+  } else if (goal === "synergy") {
+    // Every dragon either feeds a teammate's kit or is fed by one — a fully
+    // connected trio, not just one strong pair riding along with a passenger.
+    const connected = new Set([...wantsMet, ...suppliedBy]);
+    if (dragons.length === 3 && connected.size === 3) {
+      add("All 3 dragons are linked into each other's kits — no passenger", 0.08);
+    }
   }
 
   const score = basePower + bonus;
-  return { score, basePower, rawPower, bonusPct: bonus / basePower, synergies, warnings, placement, troopType };
+  const rankScore = basePower + bonus * (SYNERGY_EMPHASIS[goal] ?? 1);
+  return { score, rankScore, basePower, rawPower, bonusPct: bonus / basePower, synergies, warnings, placement, troopType };
 }
 
 function applies(d: Dragon, e: EffectId) { return dragonEffects(d).applies.includes(e); }
@@ -309,8 +311,8 @@ export function bestArmy(
     const placement: Placement = { left: null, vanguard: null, right: null, ...held, ...seating };
     for (const t of troops) {
       const ev = evaluatePlacement(placement, t, opts);
-      if (!best || ev.score > best.score) best = ev;
+      if (!best || ev.rankScore > best.rankScore) best = ev;
     }
   }
-  return best ?? { score: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement: { left: null, vanguard: null, right: null }, troopType: null };
+  return best ?? { score: 0, rankScore: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement: { left: null, vanguard: null, right: null }, troopType: null };
 }

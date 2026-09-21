@@ -6,10 +6,16 @@ import { optimize } from "./engine/optimizer";
 import { useRoster } from "./hooks/useRoster";
 import type { Goal, OptimizeResult, TroopType } from "./types";
 
-function troopOptionsFor(goal: Goal): TroopType[] {
-  const ids = MODEL.TROOP_TYPES.map((t) => t.id) as TroopType[];
-  return goal === "siege" ? ["siege"] : ids.filter((t) => t !== "siege");
-}
+// Siege troops lose the troop-advantage cycle to every other type, so they're
+// not a real army composition outside a dedicated siege plan — off the table
+// for every goal here.
+const TROOP_OPTIONS = (MODEL.TROOP_TYPES.map((t) => t.id) as TroopType[]).filter((t) => t !== "siege");
+
+const GOAL_HINT: Record<Goal, string> = {
+  balanced: "Ranks armies by total effective power.",
+  dps: "Emphasizes damage dealers and the kits that amplify them.",
+  synergy: "Ranks armies by how much the 3 dragons' kits feed each other, even over raw power.",
+};
 
 function App() {
   const { roster, addDragon, addDragons, removeDragon, toggleActive, clearRoster } = useRoster();
@@ -27,7 +33,7 @@ function App() {
       optimize(pool, {
         numArmies,
         goal,
-        troopOptions: troopOptionsFor(goal),
+        troopOptions: TROOP_OPTIONS,
         enemyTroop: enemyTroop || null,
         iterations: 300,
       })
@@ -55,54 +61,57 @@ function App() {
         />
 
         <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <label className="flex flex-col text-sm text-neutral-300">
-              Goal
-              <select
-                className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value as Goal)}
-              >
-                <option value="balanced">Max Power</option>
-                <option value="dps">Anti-Army DPS</option>
-                <option value="siege">Siege</option>
-              </select>
-            </label>
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col text-sm text-neutral-300">
+                Goal
+                <select
+                  className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value as Goal)}
+                >
+                  <option value="balanced">Max Power</option>
+                  <option value="dps">Anti-Army DPS</option>
+                  <option value="synergy">Dragon Synergy</option>
+                </select>
+              </label>
 
-            <label className="flex flex-col text-sm text-neutral-300">
-              # armies
-              <select
-                className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
-                value={numArmies}
-                onChange={(e) => setNumArmies(Number(e.target.value))}
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </label>
+              <label className="flex flex-col text-sm text-neutral-300">
+                # armies
+                <select
+                  className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
+                  value={numArmies}
+                  onChange={(e) => setNumArmies(Number(e.target.value))}
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="flex flex-col text-sm text-neutral-300">
-              vs enemy troop
-              <select
-                className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
-                value={enemyTroop}
-                onChange={(e) => setEnemyTroop(e.target.value as TroopType | "")}
-              >
-                <option value="">(none)</option>
-                {MODEL.TROOP_TYPES.map((t) => (
-                  <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
-                ))}
-              </select>
-            </label>
+              <label className="flex flex-col text-sm text-neutral-300">
+                vs enemy troop
+                <select
+                  className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1"
+                  value={enemyTroop}
+                  onChange={(e) => setEnemyTroop(e.target.value as TroopType | "")}
+                >
+                  <option value="">(none)</option>
+                  {MODEL.TROOP_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
+                  ))}
+                </select>
+              </label>
 
-            <button
-              className="ml-auto rounded bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
-              disabled={activeCount === 0}
-              onClick={handleOptimize}
-            >
-              Optimize Formations
-            </button>
+              <button
+                className="ml-auto rounded bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+                disabled={activeCount === 0}
+                onClick={handleOptimize}
+              >
+                Optimize Formations
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">{GOAL_HINT[goal]}</p>
           </div>
 
           {!result ? (

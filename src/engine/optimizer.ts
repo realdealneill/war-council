@@ -1,9 +1,10 @@
 // Partitions a roster into up to 10 armies of 3 dragons each, maximizing
-// total effective power. A strong greedy seed followed by iterated local
+// total rank score (see scoring.ts — equal to effective power except under
+// the "synergy" goal). A strong greedy seed followed by iterated local
 // search (moves + swaps); the within-army arrangement is solved exactly by
 // bestArmy(). Ported from dragonfire-formations.com's js/optimizer.js.
 import { bestArmy, type EvaluateOptions } from "./scoring";
-import { goalPower } from "./power";
+import { dragonPower } from "./power";
 import type { Army, Dragon, OptimizeResult, Placement, TroopType } from "../types";
 
 const MAX_ARMIES = 10;
@@ -36,7 +37,7 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
   const evalOpts: EvaluateOptions = { goal, enemyTroop: opts.enemyTroop };
 
   const armies: Army[] = Array.from({ length: numArmies }, () => ({
-    dragons: [], locks: {}, eval: { score: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement: { left: null, vanguard: null, right: null }, troopType: null },
+    dragons: [], locks: {}, eval: { score: 0, rankScore: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement: { left: null, vanguard: null, right: null }, troopType: null },
   }));
 
   const lockedIds = new Set<string>();
@@ -54,17 +55,15 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
   }
 
   const pool = roster.filter((d) => !lockedIds.has(d.id));
-  pool.sort((a, b) => goalPower(b, goal) - goalPower(a, goal));
+  pool.sort((a, b) => dragonPower(b) - dragonPower(a));
 
   const capacity = armies.reduce((s, a) => s + (ARMY_SIZE - a.dragons.length), 0);
   const active = pool.slice(0, capacity);
   const bench = pool.slice(capacity);
 
-  // A wall never attacks, so seeding every siege army with a tank first is
-  // exactly wrong — leave the seed to the greedy fill for that goal.
-  const seedTanks = goal !== "siege";
-  const tanks = seedTanks ? active.filter((d) => d.role === "tank") : [];
-  const others = seedTanks ? active.filter((d) => d.role !== "tank") : active.slice();
+  // Seed: spread tank/taunt dragons across armies as vanguards.
+  const tanks = active.filter((d) => d.role === "tank");
+  const others = active.filter((d) => d.role !== "tank");
 
   let ai = 0;
   for (const t of tanks) {
@@ -79,8 +78,8 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
     let bestGain = -Infinity;
     for (let i = 0; i < armies.length; i++) {
       if (armies[i].dragons.length >= ARMY_SIZE) continue;
-      const before = bestArmy(armies[i].dragons, troopOptions, evalOpts, armies[i].locks).score;
-      const after = bestArmy(armies[i].dragons.concat([d]), troopOptions, evalOpts, armies[i].locks).score;
+      const before = bestArmy(armies[i].dragons, troopOptions, evalOpts, armies[i].locks).rankScore;
+      const after = bestArmy(armies[i].dragons.concat([d]), troopOptions, evalOpts, armies[i].locks).rankScore;
       const gain = after - before;
       if (gain > bestGain) { bestGain = gain; bestArmyIdx = i; }
     }
@@ -103,13 +102,13 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
           if (lockedIn(armies[i], armies[i].dragons[x])) continue;
           for (let y = 0; y < armies[j].dragons.length; y++) {
             if (lockedIn(armies[j], armies[j].dragons[y])) continue;
-            const before = armies[i].eval.score + armies[j].eval.score;
+            const before = armies[i].eval.rankScore + armies[j].eval.rankScore;
             const di = armies[i].dragons.slice();
             const dj = armies[j].dragons.slice();
             const tmp = di[x]; di[x] = dj[y]; dj[y] = tmp;
             const ei = bestArmy(di, troopOptions, evalOpts, armies[i].locks);
             const ej = bestArmy(dj, troopOptions, evalOpts, armies[j].locks);
-            if (ei.score + ej.score > before + 1e-6) {
+            if (ei.rankScore + ej.rankScore > before + 1e-6) {
               armies[i].dragons = di; armies[i].eval = ei;
               armies[j].dragons = dj; armies[j].eval = ej;
               improved = true;
@@ -123,12 +122,12 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
       for (let i = 0; i < armies.length; i++) {
         for (let x = 0; x < armies[i].dragons.length; x++) {
           if (lockedIn(armies[i], armies[i].dragons[x])) continue;
-          const before = armies[i].eval.score;
+          const before = armies[i].eval.rankScore;
           const di = armies[i].dragons.slice();
           const benched = di[x];
           di[x] = bench[b];
           const ei = bestArmy(di, troopOptions, evalOpts, armies[i].locks);
-          if (ei.score > before + 1e-6) {
+          if (ei.rankScore > before + 1e-6) {
             armies[i].dragons = di;
             armies[i].eval = ei;
             bench[b] = benched;
@@ -141,10 +140,10 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
     for (let i = 0; i < armies.length; i++) {
       while (armies[i].dragons.length < ARMY_SIZE && bench.length > 0) {
         let bestB = -1, bestGain = -Infinity, bestEval = null as Army["eval"] | null;
-        const before = armies[i].eval.score;
+        const before = armies[i].eval.rankScore;
         for (let b = 0; b < bench.length; b++) {
           const ei = bestArmy(armies[i].dragons.concat([bench[b]]), troopOptions, evalOpts, armies[i].locks);
-          const gain = ei.score - before;
+          const gain = ei.rankScore - before;
           if (gain > bestGain) { bestGain = gain; bestB = b; bestEval = ei; }
         }
         if (bestB >= 0 && bestGain > 0 && bestEval) {
@@ -157,7 +156,7 @@ export function optimize(roster: Dragon[], opts: OptimizeOptions = {}): Optimize
     }
   }
 
-  if (!hasLocks) armies.sort((a, b) => b.eval.score - a.eval.score);
+  if (!hasLocks) armies.sort((a, b) => b.eval.rankScore - a.eval.rankScore);
 
   return { armies, bench, total: totalScore(armies), iterations: iter };
 }
