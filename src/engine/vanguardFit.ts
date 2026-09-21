@@ -26,14 +26,26 @@ export interface FlankCandidate {
   /** Deals the damage type this Vanguard's flank buff rewards (only meaningful on the buffed flank). */
   fits: boolean;
   /**
-   * Synergy bonus (fraction over base power, e.g. 0.18 = +18%) for the full
-   * trio — vanguard + this candidate + whatever's in the other flank — at
-   * its best troop type. Null when the other flank hasn't been picked yet:
-   * there's nothing to compute a joint synergy with, so it's left blank
-   * rather than showing a number that's really just "synergy with Vanguard
-   * alone" mislabeled.
+   * Synergy bonus (fraction over base power, e.g. 0.18 = +18%) for just
+   * vanguard + this candidate. The Vanguard is fixed from the moment it's
+   * chosen, so this is always computable — it's what you see while making
+   * the very first flank pick, before the other flank exists at all.
    */
-  synergyPct: number | null;
+  vanguardSynergyPct: number;
+  /**
+   * Synergy bonus for the full trio — vanguard + this candidate + whatever
+   * is in the other flank — at its best troop type. Null until the other
+   * flank is actually picked: there's nothing to compute a joint synergy
+   * with yet, so it's left blank rather than showing vanguardSynergyPct
+   * again under a misleading label.
+   */
+  totalSynergyPct: number | null;
+}
+
+/** Synergy (%) of vanguard + candidate (in `flank`) alone. */
+function synergyWithVanguard(vanguard: Dragon, candidate: Dragon, flank: Slot): number {
+  const locks: Partial<Record<Slot, Dragon>> = { vanguard, [flank]: candidate };
+  return bestArmy([vanguard, candidate], NON_SIEGE_TROOP_OPTIONS, { goal: "balanced" }, locks).bonusPct;
 }
 
 /** Synergy (%) of vanguard + candidate (in `flank`) + otherFlankDragon (in the remaining flank), or null if otherFlankDragon isn't chosen yet. */
@@ -61,9 +73,9 @@ function compareCandidates(a: Dragon, b: Dragon): number {
  * chosen, whatever's in the other flank). On the flank the Vanguard's own
  * skill buffs, dragons whose damage type matches that buff are ranked
  * first (they're the ones who actually cash it in); everyone else follows.
- * Within each group: highest synergyPct first (once it's known — before
- * that every candidate's is null, so this step is a no-op), then highest
- * power, then highest (known) base Instinct, then star rank.
+ * Within each group, ranked by synergy — totalSynergyPct once the other
+ * flank is picked, vanguardSynergyPct before that — then highest power,
+ * then highest (known) base Instinct, then star rank.
  */
 export function rankFlankCandidates(vanguard: Dragon, flank: Slot, pool: Dragon[], otherFlankDragon: Dragon | null): FlankCandidate[] {
   const reqType = isBuffedFlank(vanguard.name, flank) ? flankDamageType(vanguard.name) : null;
@@ -71,12 +83,13 @@ export function rankFlankCandidates(vanguard: Dragon, flank: Slot, pool: Dragon[
     .map((dragon) => ({
       dragon,
       fits: reqType ? dragon.damageType === reqType : true,
-      synergyPct: synergyWithOtherFlank(vanguard, dragon, flank, otherFlankDragon),
+      vanguardSynergyPct: synergyWithVanguard(vanguard, dragon, flank),
+      totalSynergyPct: synergyWithOtherFlank(vanguard, dragon, flank, otherFlankDragon),
     }))
     .sort((a, b) => {
       if (a.fits !== b.fits) return a.fits ? -1 : 1;
-      const sa = a.synergyPct ?? -Infinity;
-      const sb = b.synergyPct ?? -Infinity;
+      const sa = a.totalSynergyPct ?? a.vanguardSynergyPct;
+      const sb = b.totalSynergyPct ?? b.vanguardSynergyPct;
       if (sb !== sa) return sb - sa;
       return compareCandidates(a.dragon, b.dragon);
     });

@@ -60,13 +60,14 @@ function FlankSlot({
         <>
           <div className="flex items-center justify-between px-2 text-[10px] uppercase text-neutral-600">
             <span>Dragon</span>
-            <span className="flex gap-3">
-              <span className="w-12 text-right">Power</span>
-              <span className="w-14 text-right">Synergy</span>
+            <span className="flex gap-2">
+              <span className="w-11 text-right">Power</span>
+              <span className="w-12 text-right">Vs. VG</span>
+              <span className="w-12 text-right">Total</span>
             </span>
           </div>
           <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-            {ranked.map(({ dragon: d, fits, synergyPct }) => (
+            {ranked.map(({ dragon: d, fits, vanguardSynergyPct, totalSynergyPct }) => (
               <li key={d.id}>
                 <button
                   className={`flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left text-sm hover:bg-neutral-800/60 ${
@@ -79,10 +80,11 @@ function FlankSlot({
                     <span className="text-neutral-100">{d.name}</span>
                     <span className="text-xs text-neutral-500">{roleName(d.role)}</span>
                   </span>
-                  <span className="flex gap-3 text-xs">
-                    <span className="w-12 text-right text-neutral-500">{Math.round(dragonPower(d))}</span>
-                    <span className={`w-14 text-right ${synergyPct != null ? "text-violet-300" : "text-neutral-600"}`}>
-                      {synergyPct != null ? `+${(synergyPct * 100).toFixed(1)}%` : "—"}
+                  <span className="flex gap-2 text-xs">
+                    <span className="w-11 text-right text-neutral-500">{Math.round(dragonPower(d))}</span>
+                    <span className="w-12 text-right text-neutral-400">+{(vanguardSynergyPct * 100).toFixed(1)}%</span>
+                    <span className={`w-12 text-right ${totalSynergyPct != null ? "text-violet-300" : "text-neutral-600"}`}>
+                      {totalSynergyPct != null ? `+${(totalSynergyPct * 100).toFixed(1)}%` : "—"}
                     </span>
                   </span>
                 </button>
