@@ -16,30 +16,68 @@ import { DRAGON_KITS } from "../data";
 
 const SLOTS: (keyof Placement)[] = ["left", "vanguard", "right"];
 
-const AFFINITY_BONUS = 0.07;
-const AFFINITY_PENALTY = 0.07;
+/**
+ * Every tunable number the synergy model uses, in one place, so
+ * src/admin/SynergyRules.tsx can display them without a second
+ * hand-maintained copy that could drift out of sync. Each is a fraction of
+ * the relevant dragon's (or the army's) power, added on top of basePower —
+ * see evaluatePlacement's numbered sections below for exactly how each one
+ * is used.
+ */
+export const SYNERGY_WEIGHTS = {
+  // --- 1. Troop affinity ---
+  affinityBonus: 0.07, // per dragon with positive affinity for the chosen troop type
+  affinityPenalty: 0.07, // per dragon with negative affinity
+  affinityStackPerExtra: 0.03, // per dragon beyond the first with positive affinity (2 dragons = ×1, 3 = ×2)
 
-// A team-wide edge/disadvantage from the troop-type matchup cycle, on top of
-// each dragon's own troop affinity (section 1). Kept smaller than affinity
-// since it applies once per army rather than per dragon.
-const MATCHUP_BONUS = 0.05;
-const MATCHUP_PENALTY = 0.05;
+  // --- 1b. Troop-type matchup vs a named enemy troop (our addition — see file header) ---
+  matchupBonus: 0.05,
+  matchupPenalty: 0.05,
 
-const MITIGATION_VALUE = 0.5;
-const RECOVERY_VALUE = 0.35;
-const STAT_POINT_VALUE = 0.002;
+  // --- 2. Vanguard skill ---
+  // How much a non-damage Vanguard buff is worth relative to raw damage,
+  // and how much a raw stat point (e.g. +20 Instinct) is worth.
+  mitigationValue: 0.5,
+  recoveryValue: 0.35,
+  statPointValue: 0.002,
+  vanguardTaunt: 0.1, // Vanguard applies Taunt — soaks damage for the flanks
 
-// How much more heavily the "Dragon Synergy" goal weighs the synergy bonus
-// against raw power when RANKING armies, so a well-connected trio of kits
-// can outrank three dragons with bigger numbers but nothing feeding each
-// other. The true effective power (`score`) shown to the user is unaffected.
-const SYNERGY_EMPHASIS: Record<Goal, number> = { balanced: 1, dps: 1, synergy: 3 };
+  // --- 3. Role-position fit ---
+  positionFitRightPhysical: 0.05, // Physical DPS correctly on Right Flank
+  positionFitLeftSupport: 0.04, // Tactical/Fire/Healer correctly on Left Flank
+  positionFitVanguardTank: 0.05, // Tank correctly in Vanguard
 
-const WANT_VALUE: Partial<Record<EffectId, number>> = {
-  control: 0.08, panic: 0.07, burn: 0.06, vulnerable: 0.06, taunt: 0.05,
-  slow: 0.04, bleed: 0.04, weakened: 0.04,
-  advantage: 0.06, resistance: 0.05, firstStrike: 0.06, recovery: 0.04,
-  sentinel: 0.1,
+  // --- 4. Kit synergies (what a dragon needs vs what a teammate supplies) ---
+  // Per-effect value of a satisfied "want", keyed by EffectId; wantValueDefault
+  // covers any EffectId not listed here.
+  wantValue: {
+    control: 0.08, panic: 0.07, burn: 0.06, vulnerable: 0.06, taunt: 0.05,
+    slow: 0.04, bleed: 0.04, weakened: 0.04,
+    advantage: 0.06, resistance: 0.05, firstStrike: 0.06, recovery: 0.04,
+    sentinel: 0.1,
+  } as Partial<Record<EffectId, number>>,
+  wantValueDefault: 0.05,
+  tauntSustain: 0.06, // a taunting dragon + any sustain (recovery/cleanse/mitigation/resistance/protect)
+  advantageGiverPerDealer: 0.04, // per DPS dragon, when someone grants Advantage
+  softenerPerCount: 0.03, // per softening dragon (vulnerable/weakened/debuff-applier), per DPS dragon present
+  controlStackMin: 2, // dragons needed to trigger the control-stack bonus
+  controlStack: 0.05,
+  risingTideNeedsMet: 0.05, // a Mirage/Double Strike/Rising Tide dragon, when the team has sustain to keep it alive
+  risingTideThresholdMet: 0.06, // a Rising Tide dragon whose every "want" is met (hits its stack thresholds fast)
+
+  // --- 5. Role balance ---
+  balancedCore: 0.04, // at least one tank + one damage dealer
+
+  // --- 6. Formation goal emphasis ---
+  dpsFocusPerDealer: 0.05, // "dps" goal: per damage dealer
+  offensiveKitPerAmplifier: 0.03, // "dps" goal: per damage-amplifying dragon
+  synergyNoPassenger: 0.08, // "synergy" goal: every dragon feeds or is fed by a teammate's kit
+  // How much more heavily the "Dragon Synergy" goal weighs the synergy bonus
+  // against raw power when RANKING armies (see rankScore below), so a
+  // well-connected trio can outrank three dragons with bigger numbers but
+  // nothing feeding each other. The true effective power (`score`) shown
+  // to the user is unaffected.
+  synergyEmphasis: { balanced: 1, dps: 1, synergy: 3 } as Record<Goal, number>,
 };
 
 const EFFECT_NAME: Partial<Record<EffectId, string>> = {
@@ -66,9 +104,9 @@ function buffValue(effects: BuffEffect[] | undefined, receiver: Dragon | null, d
   (effects ?? []).forEach((e) => {
     if (e.kind === "damage") pct += receiver && receiver.damageType === e.type ? (e.pct ?? 0) : 0;
     else if (e.kind === "damageAny") pct += e.pct ?? 0;
-    else if (e.kind === "mitigation") pct += (e.pct ?? 0) * MITIGATION_VALUE * defense;
-    else if (e.kind === "recovery") pct += (e.pct ?? 0) * RECOVERY_VALUE * defense;
-    else if (e.kind === "stat") pct += (e.stats?.length ?? 0) * (e.flat ?? 0) * STAT_POINT_VALUE;
+    else if (e.kind === "mitigation") pct += (e.pct ?? 0) * SYNERGY_WEIGHTS.mitigationValue * defense;
+    else if (e.kind === "recovery") pct += (e.pct ?? 0) * SYNERGY_WEIGHTS.recoveryValue * defense;
+    else if (e.kind === "stat") pct += (e.stats?.length ?? 0) * (e.flat ?? 0) * SYNERGY_WEIGHTS.statPointValue;
   });
   return pct;
 }
@@ -96,6 +134,7 @@ export interface EvaluateOptions {
 
 export function evaluatePlacement(placement: Placement, troopType: TroopType | null, opts: EvaluateOptions = {}): ArmyEvaluation {
   const goal = opts.goal ?? "balanced";
+  const W = SYNERGY_WEIGHTS;
   const dragons = SLOTS.map((s) => placement[s]).filter((d): d is Dragon => Boolean(d));
   if (dragons.length === 0) {
     return { score: 0, rankScore: 0, basePower: 0, rawPower: 0, bonusPct: 0, synergies: [], warnings: [], placement, troopType };
@@ -122,14 +161,14 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
       const a = d.affinity?.[troopType] ?? 0;
       if (a === "+") {
         positives++;
-        add(`${d.name}: positive ${troopType} affinity (+${Math.round(AFFINITY_BONUS * 100)}% stats)`, AFFINITY_BONUS, pw(d));
+        add(`${d.name}: positive ${troopType} affinity (+${Math.round(W.affinityBonus * 100)}% stats)`, W.affinityBonus, pw(d));
       } else if (a === "-") {
-        bonus -= AFFINITY_PENALTY * pw(d);
-        warnings.push(`${d.name} has NEGATIVE ${troopType} affinity (-${Math.round(AFFINITY_PENALTY * 100)}%)`);
+        bonus -= W.affinityPenalty * pw(d);
+        warnings.push(`${d.name} has NEGATIVE ${troopType} affinity (-${Math.round(W.affinityPenalty * 100)}%)`);
       }
     });
     if (positives >= 2) {
-      add(`Stacked ${troopType} affinity across ${positives} dragons`, 0.03 * (positives - 1));
+      add(`Stacked ${troopType} affinity across ${positives} dragons`, W.affinityStackPerExtra * (positives - 1));
     }
   }
 
@@ -137,10 +176,10 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   // the reference site shows this matchup but never scores it). ---
   if (troopType && opts.enemyTroop) {
     const m = troopMatchup(troopType, opts.enemyTroop);
-    if (m.delta === 1) add(`${troopType} has the advantage vs ${opts.enemyTroop}`, MATCHUP_BONUS);
+    if (m.delta === 1) add(`${troopType} has the advantage vs ${opts.enemyTroop}`, W.matchupBonus);
     else if (m.delta === -1) {
-      bonus -= MATCHUP_PENALTY * basePower;
-      warnings.push(`${troopType} is at a disadvantage vs ${opts.enemyTroop} (-${Math.round(MATCHUP_PENALTY * 100)}%)`);
+      bonus -= W.matchupPenalty * basePower;
+      warnings.push(`${troopType} is at a disadvantage vs ${opts.enemyTroop} (-${Math.round(W.matchupPenalty * 100)}%)`);
     }
   }
 
@@ -170,16 +209,16 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
         warnings.push(`${vg.name}'s Vanguard skill buffs the ${flankName}, which is empty.`);
       }
     }
-    if (applies(vg, "taunt")) add(`${vg.name} taunts from the Vanguard — soaks damage for your flanks`, 0.1 * defense);
+    if (applies(vg, "taunt")) add(`${vg.name} taunts from the Vanguard — soaks damage for your flanks`, W.vanguardTaunt * defense);
   } else {
     warnings.push("No Vanguard dragon assigned.");
   }
 
   // --- 3. Role-position fit ---
-  if (right && right.role === "physical") add(`${right.name} (Physical DPS) correctly on Right Flank`, 0.05, pw(right));
+  if (right && right.role === "physical") add(`${right.name} (Physical DPS) correctly on Right Flank`, W.positionFitRightPhysical, pw(right));
   if (left && (left.role === "tactical" || left.role === "fire" || left.role === "healer"))
-    add(`${left.name} (${left.role}) correctly on Left Flank`, 0.04, pw(left));
-  if (vg && vg.role === "tank") add(`${vg.name} (Tank) correctly in Vanguard`, 0.05 * defense, pw(vg));
+    add(`${left.name} (${left.role}) correctly on Left Flank`, W.positionFitLeftSupport, pw(left));
+  if (vg && vg.role === "tank") add(`${vg.name} (Tank) correctly in Vanguard`, W.positionFitVanguardTank * defense, pw(vg));
   if (right && right.role === "tank") warnings.push(`${right.name} is a Tank but on the Right Flank — usually better in Vanguard.`);
 
   // --- 4. Kit synergies: what each dragon needs vs what the others supply ---
@@ -192,7 +231,7 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
       wantsMet.add(d.id);
       suppliedBy.add(source.id);
       const name = EFFECT_NAME[want] ?? want;
-      add(`${d.name} hits harder with ${name} — supplied by ${source.name}`, WANT_VALUE[want] ?? 0.05, pw(d));
+      add(`${d.name} hits harder with ${name} — supplied by ${source.name}`, W.wantValue[want] ?? W.wantValueDefault, pw(d));
     });
   });
 
@@ -204,32 +243,32 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   const controllers = dragons.filter((d) => appliesControl(d));
   const scalers = dragons.filter((d) => holds(d, "mirage") || holds(d, "doubleStrike") || holds(d, "risingTide"));
 
-  if (anyTaunt && (anySustain || anyMitigation)) add("Taunt + sustain: the taunting dragon holds the front far longer", 0.06 * defense);
+  if (anyTaunt && (anySustain || anyMitigation)) add("Taunt + sustain: the taunting dragon holds the front far longer", W.tauntSustain * defense);
   if (advantageGivers.length) {
     const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`${advantageGivers[0].name} grants Advantage to ${dealers} damage dealer(s)`, 0.04 * dealers);
+    if (dealers) add(`${advantageGivers[0].name} grants Advantage to ${dealers} damage dealer(s)`, W.advantageGiverPerDealer * dealers);
   }
   if (softeners.length) {
     const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`${softeners.length} dragon(s) soften the enemy for ${dealers} damage dealer(s)`, 0.03 * softeners.length);
+    if (dealers) add(`${softeners.length} dragon(s) soften the enemy for ${dealers} damage dealer(s)`, W.softenerPerCount * softeners.length);
   }
-  if (controllers.length >= 2) add(`Control stack: ${controllers.length} dragons apply Stun/Overwhelm/Confusion`, 0.05);
+  if (controllers.length >= W.controlStackMin) add(`Control stack: ${controllers.length} dragons apply Stun/Overwhelm/Confusion`, W.controlStack);
   scalers.forEach((d) => {
-    if (anySustain || anyMitigation) add(`${d.name} scales through long fights thanks to team sustain`, 0.05, pw(d));
+    if (anySustain || anyMitigation) add(`${d.name} scales through long fights thanks to team sustain`, W.risingTideNeedsMet, pw(d));
   });
 
   dragons.forEach((d) => {
     if (!holds(d, "risingTide")) return;
     const needs = dragonEffects(d).wants;
     if (!needs.length || !needs.every((w) => dragons.some((o) => o !== d && supplies(o, w)))) return;
-    add(`${d.name} stacks Rising Tide fast enough to hit its 4+ and 6+ thresholds`, 0.06, pw(d));
+    add(`${d.name} stacks Rising Tide fast enough to hit its 4+ and 6+ thresholds`, W.risingTideThresholdMet, pw(d));
   });
 
   // --- 5. Role balance ---
   const tanks = dragons.filter((d) => d.role === "tank").length;
   const dps = dragons.filter(isDPS).length;
   const healers = dragons.filter((d) => d.role === "healer").length;
-  if (tanks >= 1 && dps >= 1) add("Balanced core: tank + damage dealer(s)", 0.04 * defense);
+  if (tanks >= 1 && dps >= 1) add("Balanced core: tank + damage dealer(s)", W.balancedCore * defense);
   if (dps === 0 && dragons.length === 3) warnings.push("No damage dealer in this army — low kill pressure.");
   if (tanks >= 3) warnings.push("Three tanks — very little damage output.");
   if (healers >= 2) warnings.push("Two healers — consider swapping one for damage.");
@@ -245,20 +284,20 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   // --- 6. Formation goal emphasis ---
   if (goal === "dps") {
     const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`DPS focus: ${dealers} damage dealer(s)`, 0.05 * dealers);
+    if (dealers) add(`DPS focus: ${dealers} damage dealer(s)`, W.dpsFocusPerDealer * dealers);
     const ampl = dragons.filter((d) => applies(d, "vulnerable") || applies(d, "burn") || holds(d, "doubleStrike") || holds(d, "mirage") || grantsEffect(d, "advantage")).length;
-    if (ampl) add(`Offensive kit: ${ampl} damage-amplifying dragon(s)`, 0.03 * ampl);
+    if (ampl) add(`Offensive kit: ${ampl} damage-amplifying dragon(s)`, W.offensiveKitPerAmplifier * ampl);
   } else if (goal === "synergy") {
     // Every dragon either feeds a teammate's kit or is fed by one — a fully
     // connected trio, not just one strong pair riding along with a passenger.
     const connected = new Set([...wantsMet, ...suppliedBy]);
     if (dragons.length === 3 && connected.size === 3) {
-      add("All 3 dragons are linked into each other's kits — no passenger", 0.08);
+      add("All 3 dragons are linked into each other's kits — no passenger", W.synergyNoPassenger);
     }
   }
 
   const score = basePower + bonus;
-  const rankScore = basePower + bonus * (SYNERGY_EMPHASIS[goal] ?? 1);
+  const rankScore = basePower + bonus * (W.synergyEmphasis[goal] ?? 1);
   return { score, rankScore, basePower, rawPower, bonusPct: bonus / basePower, synergies, warnings, placement, troopType };
 }
 

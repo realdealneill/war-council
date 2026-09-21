@@ -1,19 +1,24 @@
 import { ConvexProvider } from 'convex/react'
-import { StrictMode } from 'react'
+import { StrictMode, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { DragonStatsAdmin } from './admin/DragonStatsAdmin.tsx'
+import { SynergyRules } from './admin/SynergyRules.tsx'
 import { convex } from './convexClient.ts'
 
-// No router installed — this is the one hidden path this app recognizes,
-// for filling in per-dragon base stats by hand. Not linked from the UI.
-const isAdminRoute = window.location.pathname === '/admin/dragon-stats'
+// No router installed — these are the only hidden paths this app
+// recognizes, for admin/review pages not linked from the UI.
+const ADMIN_ROUTES: Record<string, () => ReactElement> = {
+  '/admin/dragon-stats': DragonStatsAdmin,
+  '/admin/synergy-rules': SynergyRules,
+}
+const Route = ADMIN_ROUTES[window.location.pathname]
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConvexProvider client={convex}>
-      {isAdminRoute ? <DragonStatsAdmin /> : <App />}
+      {Route ? <Route /> : <App />}
     </ConvexProvider>
   </StrictMode>,
 )
