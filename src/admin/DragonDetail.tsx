@@ -4,12 +4,12 @@ import { RARITY_COEF } from "../engine/power";
 import type { Doc } from "../../convex/_generated/dataModel";
 import type { Rarity } from "../types";
 
-// Confirmed from real 6★/7★/8★ legendary data: a flat +X% of base per star
-// above ★2 (100%/125%/150% bonus at 6/7/8 — exactly linear), and stats don't
-// move with Level at all. The per-rarity rate below 25% is extrapolated from
-// your read of the pattern, not yet confirmed against rare/epic dragons —
-// tune these as you get real numbers for those.
-const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.15, epic: 0.2, legendary: 0.25, mythic: 0.3 };
+// Per Neill: rare/epic/legendary get +10%/+15%/+20% of base per star, and
+// that extra starts applying at ★2 and up — a base of 100 becomes
+// 110/115/120 at ★2, then keeps climbing by the same rate each star after
+// that (★1 stays at base). Stats don't move with Level at all. Mythic
+// (25%) is extrapolated from the +5%-per-tier pattern, not yet real.
+const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
@@ -49,8 +49,9 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
   const basePower = Math.round((rarityCoef * starMult * level) / 10) * 10;
   const finalPower = Math.round(basePower * habitMult);
 
-  const starsAboveTwo = Math.max(0, starRank - 2);
-  const statMult = 1 + statStarPct * starsAboveTwo;
+  // ★1 has no bonus; the rarity rate applies once per star from ★2 on.
+  const bonusStars = Math.max(0, starRank - 1);
+  const statMult = 1 + statStarPct * bonusStars;
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
@@ -125,7 +126,7 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               Power % per habit level
               <input type="number" step={0.005} value={habitPowerPct} onChange={(e) => setHabitPowerPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
-            <h3 className="mb-2 mt-3 text-xs font-semibold uppercase text-neutral-500">Stat % per star (above ★2), by rarity</h3>
+            <h3 className="mb-2 mt-3 text-xs font-semibold uppercase text-neutral-500">Stat % per star (from ★2 on), by rarity</h3>
             {(Object.keys(statStarPctByRarity) as Rarity[]).map((rarity) => (
               <label
                 key={rarity}
@@ -144,7 +145,7 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               </label>
             ))}
             <p className="mt-2 text-xs text-neutral-500">
-              Stats don't move with Level. Only legendary (25%) is confirmed from real numbers so far — rare/epic/mythic are extrapolated guesses.
+              Stats don't move with Level. Mythic (25%) is extrapolated from the +5%-per-tier pattern — not yet real.
             </p>
           </div>
         </div>
@@ -166,7 +167,7 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
             <h2 className="mb-2 text-sm font-semibold text-neutral-200">Stats</h2>
             <div className="mb-2 font-mono text-xs text-neutral-500">
-              projected = base × (1 + {statStarPct}×{starsAboveTwo} stars above ★2) = base × {statMult.toFixed(3)}
+              projected = base × (1 + {statStarPct}×{bonusStars} stars from ★2 on) = base × {statMult.toFixed(3)}
             </div>
             <table className="w-full text-sm">
               <thead>
@@ -192,9 +193,8 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               </tbody>
             </table>
             <p className="mt-2 text-xs text-neutral-500">
-              "Base" is whatever you entered on the list page. This formula means ★1 and ★2 project to the
-              same value, so treat "base" as this dragon's stat at ★2 or below until you've confirmed ★1
-              separately. Blank stats show as "—".
+              "Base" is whatever you entered on the list page for this dragon at ★1 — every star from ★2 on
+              adds one more rarity-rate step. Blank stats show as "—".
             </p>
           </div>
         </div>
