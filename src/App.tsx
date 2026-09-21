@@ -1,18 +1,15 @@
 import { useState } from "react";
 import { ArmyCard } from "./components/ArmyCard";
+import { FormationBuilder } from "./components/FormationBuilder";
 import { RosterPanel } from "./components/RosterPanel";
 import { VanguardPicker } from "./components/VanguardPicker";
-import { kitFor, MODEL } from "./data";
+import { MODEL } from "./data";
+import { NON_SIEGE_TROOP_OPTIONS } from "./engine/constants";
 import { optimize } from "./engine/optimizer";
 import { useRoster } from "./hooks/useRoster";
 import type { Dragon, Goal, OptimizeResult, TroopType } from "./types";
 
 type FormationMode = "optimize" | "build";
-
-// Siege troops lose the troop-advantage cycle to every other type, so they're
-// not a real army composition outside a dedicated siege plan — off the table
-// for every goal here.
-const TROOP_OPTIONS = (MODEL.TROOP_TYPES.map((t) => t.id) as TroopType[]).filter((t) => t !== "siege");
 
 const GOAL_HINT: Record<Goal, string> = {
   balanced: "Ranks armies by total effective power.",
@@ -38,7 +35,7 @@ function App() {
       optimize(pool, {
         numArmies,
         goal,
-        troopOptions: TROOP_OPTIONS,
+        troopOptions: NON_SIEGE_TROOP_OPTIONS,
         enemyTroop: enemyTroop || null,
         iterations: 300,
       })
@@ -88,16 +85,11 @@ function App() {
           </div>
 
           {mode === "build" ? (
-            <>
-              <VanguardPicker roster={roster} selectedId={vanguard?.id ?? null} onSelect={setVanguard} />
-              {vanguard && (
-                <div className="rounded-lg border border-violet-800 bg-violet-950/20 p-3 text-sm text-violet-200">
-                  Vanguard set to <b>{vanguard.name}</b>
-                  {kitFor(vanguard.name) && <> — {kitFor(vanguard.name)!.vanguard.text}</>}
-                  <div className="mt-1 text-xs text-violet-400">Flank picks come next.</div>
-                </div>
-              )}
-            </>
+            vanguard ? (
+              <FormationBuilder vanguard={vanguard} roster={roster} onChangeVanguard={() => setVanguard(null)} />
+            ) : (
+              <VanguardPicker roster={roster} selectedId={null} onSelect={setVanguard} />
+            )
           ) : (
             <>
               <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">

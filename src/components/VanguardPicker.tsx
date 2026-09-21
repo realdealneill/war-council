@@ -1,15 +1,8 @@
 import { useMemo } from "react";
-import { kitFor, MODEL } from "../data";
+import { kitFor } from "../data";
 import { dragonPower } from "../engine/power";
 import type { Dragon } from "../types";
-
-function roleName(id: string): string {
-  return MODEL.ROLES.find((r) => r.id === id)?.name ?? id;
-}
-
-function breedName(id: string): string {
-  return MODEL.BREEDS.find((b) => b.id === id)?.name ?? id;
-}
+import { breedName, roleName } from "../utils/labels";
 
 /** Tank and Champion are the two archetypes the game itself steers into the Vanguard slot. */
 function isRecommendedVanguard(d: Dragon): boolean {

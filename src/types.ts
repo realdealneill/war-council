@@ -38,6 +38,13 @@ export interface Dragon {
   isNew?: boolean;
   /** Included in optimization when true (default). Toggled off to bench a dragon without removing it. */
   active?: boolean;
+  /**
+   * Base Instinct stat (raises Strike chance) — not in the seed data since
+   * the reference site never tracked base stats, only flat kit bonuses to
+   * them. Left undefined until real in-game numbers are entered; used only
+   * as a tiebreaker (see engine/vanguardFit.ts).
+   */
+  instinct?: number;
 }
 
 export interface VanguardBuffEffect {
