@@ -1,0 +1,222 @@
+{
+  "TROOP_TYPES": [
+    {
+      "id": "cavalry",
+      "name": "Cavalry",
+      "icon": "🐎"
+    },
+    {
+      "id": "shieldbearers",
+      "name": "Shieldbearers",
+      "icon": "🛡️"
+    },
+    {
+      "id": "archers",
+      "name": "Archers",
+      "icon": "🏹"
+    },
+    {
+      "id": "spearmen",
+      "name": "Spearmen",
+      "icon": "🔱"
+    },
+    {
+      "id": "siege",
+      "name": "Siege",
+      "icon": "🔥"
+    }
+  ],
+  "TROOP_BEATS": {
+    "cavalry": [
+      "shieldbearers"
+    ],
+    "shieldbearers": [
+      "archers"
+    ],
+    "archers": [
+      "spearmen"
+    ],
+    "spearmen": [
+      "cavalry"
+    ],
+    "siege": []
+  },
+  "POSITIONS": [
+    {
+      "id": "left",
+      "name": "Left Flank",
+      "short": "LF"
+    },
+    {
+      "id": "vanguard",
+      "name": "Vanguard",
+      "short": "VG"
+    },
+    {
+      "id": "right",
+      "name": "Right Flank",
+      "short": "RF"
+    }
+  ],
+  "RARITIES": [
+    {
+      "id": "rare",
+      "name": "Rare (Blue)",
+      "weight": 1,
+      "color": "#3b82f6"
+    },
+    {
+      "id": "epic",
+      "name": "Epic (Purple)",
+      "weight": 1.7,
+      "color": "#a855f7"
+    },
+    {
+      "id": "legendary",
+      "name": "Legendary (Gold)",
+      "weight": 2.6,
+      "color": "#eab308"
+    },
+    {
+      "id": "mythic",
+      "name": "Mythic",
+      "weight": 3.6,
+      "color": "#ef4444"
+    }
+  ],
+  "DAMAGE_TYPES": [
+    {
+      "id": "physical",
+      "name": "Physical"
+    },
+    {
+      "id": "tactical",
+      "name": "Tactical"
+    },
+    {
+      "id": "fire",
+      "name": "Fire"
+    },
+    {
+      "id": "none",
+      "name": "None / Support"
+    }
+  ],
+  "ROLES": [
+    {
+      "id": "tank",
+      "name": "Tank / Taunt",
+      "prefers": "vanguard"
+    },
+    {
+      "id": "physical",
+      "name": "Physical DPS",
+      "prefers": "right"
+    },
+    {
+      "id": "tactical",
+      "name": "Tactical DPS",
+      "prefers": "left"
+    },
+    {
+      "id": "fire",
+      "name": "Fire DPS",
+      "prefers": "left"
+    },
+    {
+      "id": "healer",
+      "name": "Healer / Support",
+      "prefers": "left"
+    },
+    {
+      "id": "control",
+      "name": "Control / Debuffer",
+      "prefers": "any"
+    }
+  ],
+  "BREEDS": [
+    {
+      "id": "champion",
+      "name": "Champion",
+      "archetype": "Suppressor",
+      "desc": "All-purpose protector; mixed damage, weakens foes / shields allies.",
+      "prefers": "vanguard"
+    },
+    {
+      "id": "hunter",
+      "name": "Hunter",
+      "archetype": "Debuffer",
+      "desc": "Fire-focused pressure dealer; lowers enemy defenses & keeps them vulnerable.",
+      "prefers": "left"
+    },
+    {
+      "id": "sentinel",
+      "name": "Sentinel",
+      "archetype": "Buffer",
+      "desc": "Tactical support core; healing, buffs & battlefield control.",
+      "prefers": "left"
+    },
+    {
+      "id": "warrior",
+      "name": "Warrior",
+      "archetype": "Enhancer",
+      "desc": "Frontline physical offense; amplifies the army's damage.",
+      "prefers": "right"
+    }
+  ],
+  "EFFECTS": {
+    "applies": {
+      "taunt": "Taunt — forces enemies to attack this dragon",
+      "burn": "Burn — burning damage over time",
+      "panic": "Panic — continuous tactical damage",
+      "stun": "Stun — target loses its turn",
+      "overwhelm": "Overwhelm / Stagger — blocks commands & basic attacks",
+      "confusion": "Confusion — target may attack its own side",
+      "slow": "Slow — cuts the target's Initiative",
+      "bleed": "Bleed — physical damage over time",
+      "weakened": "Weakened — cuts the target's damage dealt",
+      "vulnerable": "Vulnerable — target takes increased damage",
+      "debuff": "Debuff — lowers enemy stats or damage",
+      "dispel": "Dispel — strips positive effects off enemies"
+    },
+    "grants": {
+      "buff": "Buff — raises an ally's stats or damage",
+      "recovery": "Recovery — restores troops over time",
+      "cleanse": "Cleanse — removes negative effects from allies",
+      "mitigation": "Mitigation — reduces damage taken",
+      "resistance": "Resistance — grants damage resistance",
+      "evasion": "Evade — chance to ignore incoming damage",
+      "advantage": "Advantage — target deals increased damage",
+      "protect": "Protect — splits damage taken with this dragon",
+      "firstStrike": "First Strike — target attacks first",
+      "doubleStrike": "Double Strike — target gets a 2nd basic attack",
+      "mirage": "Mirage — stacking damage that grows through the fight",
+      "risingTide": "Rising Tide — stacking self-buff that grows damage & mitigation through the fight"
+    },
+    "wants": {
+      "burn": "Stronger against Burned enemies",
+      "panic": "Stronger against Panicked enemies",
+      "control": "Stronger against enemies under Control",
+      "taunt": "Stronger against Taunted enemies",
+      "vulnerable": "Stronger against Vulnerable enemies",
+      "slow": "Stronger against Slowed enemies",
+      "advantage": "Stronger while it has Advantage",
+      "resistance": "Stronger while it has Resistance",
+      "firstStrike": "Stronger while it has First Strike",
+      "sentinel": "Needs a Sentinel ally that deals Tactical Damage or applies Recovery"
+    }
+  },
+  "CONTROL_EFFECTS": [
+    "stun",
+    "overwhelm",
+    "confusion"
+  ],
+  "HABIT_UNLOCK_STARS": [
+    2,
+    4,
+    6,
+    8,
+    10
+  ],
+  "HABIT_MAX_LEVEL": 5
+}

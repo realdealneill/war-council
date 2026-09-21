@@ -1,0 +1,3066 @@
+{
+  "Syrax": {
+    "command": "Each round: 20% chance to increase the Fire Damage Dealt by +10% and grant First-Strike to 1 Ally in any lane (prioritizes Allies that deal Fire Damage) for 2 Rounds. Rounds 1,4,6,9: Deal Tactical Damage to 1 Enemy within adjacency (Damage Rate: +110%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "buff",
+          "firstStrike"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff",
+          "recovery",
+          "resistance"
+        ],
+        "self": [
+          "recovery"
+        ],
+        "wants": [
+          "slow"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "cleanse"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Vhagar": {
+    "command": "Each Round: 25% chance to Taunt 3 Enemies in any lane for 2 rounds. This chance is doubled (50%) against targets afflicted with Burn. Even-numbered Rounds: Deal Physical Damage to 1 Enemy within adjacency (Damage Rate: +120%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Reduce your Damage Received by -8%. Increase Tactical Damage Dealt by 16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "selfText": "Damage Received -8%",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Tactical Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "taunt"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "burn"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation",
+          "recovery"
+        ],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "weakened"
+        ],
+        "grants": [
+          "advantage",
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "bulwark"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Caraxes": {
+    "command": "Rounds 3,6,9: Deal Fire Damage to 3 Enemies in any lane (Damage Rate: +100%). This damage is increased by 1.5x when you have First-Strike (Damage Rate: +150%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Fire Damage Dealt by +16%. Increase Strength and Initiative by +20 of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Fire Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Strength & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "firstStrike"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "burn",
+          "slow"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Seasmoke": {
+    "command": "Each Round: Cleanse up to 3 Positive effects from Enemies. Each instance has a separate 20% chance and selects 1 Enemy in any lane. Rounds 3,6,9: Deal Fire Damage to 1 Enemy in the same lane (Damage Rate: +190%)",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence and Instinct by +15. Reduce Damage Received by 8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "dispel"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": [
+          "panic"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "advantage",
+          "buff",
+          "resistance"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Crimson": {
+    "command": "Odd-numbered Rounds: 20% chance to afflict Stun on 1 Enemy in any lane for 2 rounds. Rounds 2,5,8: Deal Fire Damage to 1 Enemy in any lane (Damage Rate: +140%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Received by +20% and Intelligence by +25. Increase Physical Damage Dealt by +10% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.2
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "intelligence"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +20%, Intelligence +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.1
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Physical Damage +10%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "stun"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "weakened"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "taunt"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "debuff",
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "debuff",
+          "stun"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Kalspire": {
+    "command": "After each Basic Attack: Deal Tactical Damage to the target (Damage Rate: +50%). Additionally, there is a 30% chance to afflict with Bleed the target and 1 other Enemy within adjacency for 2 rounds. Chance is checked separately for each target.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "bleed"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "panic"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [
+          "mitigation",
+          "selfDebuff"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Malachite": {
+    "command": "Rounds 2,4,7,9: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +100%) | Rounds 3,6,9: Apply Recovery to 3 Allies in any lane (Recovery Rate: +70%, enhanced by Instinct).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Dealt by +15% and Instinct by +25. Increase Fire Damage Dealt by +16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.15
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +15%, Instinct +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Fire Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff",
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "advantage",
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff",
+          "doubleStrike",
+          "firstStrike"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Venator": {
+    "command": "After each Basic Attack: Deal 2 instance of Physical Damage to 1 Enemy in any lane (Damage Rate: +20%). Each instance of damage selects targets separately. Rounds 4,6,8,10: 30% chance to gain Double-Strike for 2 rounds.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "doubleStrike"
+        ],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff",
+          "doubleStrike"
+        ],
+        "self": [
+          "doubleStrike"
+        ],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Daemoros": {
+    "command": "Odd-numbered Rounds: Deal Physical Damage to 1 Enemy within adjacency (Damage Rate: +125%). Additionally, there is a 20% chance to afflict the target with Burn (Damage Rate: +20%) for 2 rounds.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "burn"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff",
+          "panic"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "confusion"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "debuff",
+          "panic"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Feskar": {
+    "command": "Each Round: 20% chance to reduce the Physical Damage Dealt (Command & Habits) by -12% of the Enemy with the highest Strength for 2 rounds. Rounds 2,4,7,9: Deal Tactical Damage to the Enemy with the least troops (Damage Rate: +100%)",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "burn"
+        ]
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Rhysarion": {
+    "command": "Rounds 1,4,7: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +70%). Rounds 2,5,8: Deal Fire Damage to 3 Enemies in any lane (Damage Rate: +20%). This damage is increased by 1.5x if the target is afflicted with a Control effect (Damage Rate: +30%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Dealt by +15% and Initiative by +25. Increase the Damage Dealt by +8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.15
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "initiative"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +15%, Initiative +25",
+      "flank": [
+        {
+          "kind": "damageAny",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Dealt +8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "control"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff",
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff",
+          "resistance"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Shadowsong": {
+    "command": "Rounds 2,5,8: Deal Fire Damage to 2 Enemies within adjacency (Damage Rate: +100%). This damage is increased by 1.5x if the target is afflicted with Panic (Damage Rate: +150%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Fire Damage Dealt by +16%. Increase Strength and Initiative by +20 of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Fire Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Strength & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "panic"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "panic"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "burn"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Tashix": {
+    "command": "Each Round: 50% chance to gain 1 Stack of Mirage (Max 10 Stacks). Rounds 3,6,9: Deal Fire Damage to 1 Enemy within adjacency (Damage Rate: +200%). Each Stack of Mirage increase your Fire Damage Dealt by +2.5% per-stack.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Received by +20% and Intelligence by +25. Increase Physical Damage Dealt by +10% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.2
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "intelligence"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +20%, Intelligence +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.1
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Physical Damage +10%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mirage"
+        ],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "weakened"
+        ],
+        "grants": [],
+        "self": [
+          "mirage"
+        ],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mirage"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Vaeldra": {
+    "command": "Each Round: 25% chance to Taunt 3 Enemies in any lane for 2 rounds. Odd-numbered Rounds: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +45%)",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Reduce your Damage Received by -8%. Increase Tactical Damage Dealt by +16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "selfText": "Damage Received -8%",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Tactical Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "taunt"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "overwhelm",
+          "taunt"
+        ],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Velar": {
+    "command": "Rounds 2,4,6,8: 20% chance to grant Advantage (+15%) 2 other Allies in any lane for 2 rounds. Rounds 3,5,7,9: Deal Tactical Damage to 3 Enemies in any lane (Damage Rate: +45%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "advantage",
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "slow"
+        ],
+        "grants": [
+          "buff",
+          "firstStrike"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "bleed",
+          "burn",
+          "panic"
+        ],
+        "grants": [
+          "cleanse",
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Zivern": {
+    "command": "Rounds 1,4,6,9: 40% chance to increase the Tactical Damage Received of 1 Enemy in the same lane by +15% for 2 rounds. Rounds 1,4,6,9: Deal Tactical Damage to 2 Enemies within adjacency (Damage Rate: +75%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "debuff",
+          "panic"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Solstryker": {
+    "command": "Odd-numbered Rounds: After each Basic Attack, deal Physical Damage to the target (Damage Rate: +30%). Additionally, there is a 20% chance to reduce the targets Physical Damage Dealt by -12% for 2 rounds.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Antares": {
+    "command": "Each Round: 20% chance to afflict Vulnerable (+10%) on 1 Enemy within adjacency for 2 rounds. Rounds 3,6,9: Deal Fire Damage to 2 Enemies within adjacency (Damage Rate: +65%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Fire Damage Dealt by +16%. Increase Strength and Initiative by +20 of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Fire Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Strength & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "slow"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Shimmer": {
+    "command": "Each Round: 30% chance to increase the Strength by +18% (enhanced by Instinct) and Initiative by +9% (enhanced by Instinct) of the other Ally with the highest Strength for 2 rounds. Rounds 2,4,7,9: Deal Tactical Damage to 2 Enemies within adjacency (Damage Rate: +50%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Dealt by +15% and Instinct by +25. Increase Fire Damage Dealt by +16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.15
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +15%, Instinct +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Fire Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [
+          "recovery"
+        ],
+        "wants": [
+          "resistance"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff",
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff",
+          "firstStrike"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Jagadrix": {
+    "command": "Each Round: 30% chance to reduce the Instinct and Initiative by -15% (enhanced by Initiative) of 1 Enemy in the same lane for 2 rounds. Rounds 2,5,8: Deal Fire Damage to 1 Enemy in the same lane (Damage Rate: +120%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Fire Damage Dealt by +16%. Increase Strength and Initiative by +20 of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Fire Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Strength & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "weakened"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "panic"
+        ]
+      }
+    ]
+  },
+  "Bevlorin": {
+    "command": "Each Round: 20% chance to reduce the Fire Damage Dealt of 3 Enemies in any lane that deal Fire Damage by -10% for 2 rounds. Rounds 1,5,9: Deal Physical Damage to 3 Enemies in any lane (Damage Rate: +30%). Rounds 3,7: Deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +90%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Damage Received by -8%. Increase Tactical Damage Dealt by +16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "selfText": "Damage Received -8%",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Tactical Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff",
+          "fireWard"
+        ],
+        "self": [
+          "fireWard"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Shadowrend": {
+    "command": "Each Round: 25% chance to afflict Panic (Damage Rate: +20%) on 1 Enemy within adjacency for 2 rounds. Rounds 4,7,9,10: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +80%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "panic"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "advantage",
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Thunderstrike": {
+    "command": "Odd-numbered Round: Deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +100%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiatve by +20% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "bleed"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "advantage"
+        ]
+      }
+    ]
+  },
+  "Vesper": {
+    "command": "Each Round: 20% chance to afflict Slow on 1 Enemy in the same lane for 2 rounds. Rounds 1,3,6,8: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +70%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "slow"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff",
+          "resistance"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "confusion"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Arulix": {
+    "command": "Each Round: 25% chance to reduce the Fire Damage Dealt of all enemies that deal Fire Damage by -15% for 1 round. Reounds 1,2,3,5,8: Deal Tactical Damage to all enemies that deal Physical Damage (Command & Habits) (Damage Rate: +45%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Nyrena": {
+    "command": "Each Round: 10% chance to reduce the Physical Damage Dealt of 3 Enemies in any lane by -10% for 1 round. The duration is doubled (2 rounds) against targets afflicted with Burn. Rounds 1,3: Deal Fire Damage to 3 Enemies in any lane (Damage Rate: +20%). Rounds 5,7,9: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +80%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "burn"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Dawnseeker": {
+    "command": "Each Round: 30% chance to increase your Instinct and Initiative by +20% for 1 round. Rounds 1,2,4,7: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +50%). Rounds 2,5,8: Apply Recovery to 2 Allies within adjacency (Recovery Rate: +30%, enhanced by Initiative).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Dealt by +15% and Instinct by +25. Increase Fire Damage Dealt by +16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.15
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +15%, Instinct +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "fire",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Fire Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff",
+          "recovery"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff",
+          "firstStrike"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Arrax": {
+    "command": "Rounds 2,4,6,8: 25% chance to afflict Weakened on 1 Enemy within adjacency. This chance is doubled (50%) against targets afflicted with Bleed. Rounds 2,4,5,6,8: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +40%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Reduce your Damage Received by -8%. Increase Tactical Damage Dealt by 16% of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "selfText": "Damage Received -8%",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Tactical Damage +16%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "weakened"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "bleed"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff",
+          "fireWard"
+        ],
+        "self": [
+          "fireWard"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Sheepstealer": {
+    "command": "Each Round: If no enemy is marked as your Prey, 40% chance to mark 1 Enemy in any lane as your Prey for 3 rounds (prioritizes enemies that received Recovery within the last 1 round). Prey reduces the target's Recovery Received by -30$. Rounds 1,4,7,10: Deal Fire Damage to 1 Enemy in any lane (prioritizes your Prey) (Damage Rate: +100%). This damage is doubled (+200%) when targeting your Prey.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Recovery Received by +20% and Intelligence by +25. Increase Physical Damage Dealt by +10% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "recovery",
+          "pct": 0.2
+        },
+        {
+          "kind": "stat",
+          "stats": [
+            "intelligence"
+          ],
+          "flat": 25
+        }
+      ],
+      "selfText": "Recovery +20%, Intelligence +25",
+      "flank": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.1
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Physical Damage +10%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "prey"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "prey",
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [
+          "cleanse"
+        ],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [
+          "evasion"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Vermax": {
+    "command": "After each Basic Attack: Deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +50%). Additionally, there is a 20% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 ally that deals Tactical Damage until the end of combat. Repeat this chance if any enemy deals Fire Damage.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "advantage"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Tessarion": {
+    "command": "Rounds 1,4,7: Deal Fire Damage to 1 Enemy in any lane (prioritizes targets that deals Physical Damage from Command and Habits) (Damage Rate: +95%). Additionally, 50% chance to reduce the target's Damage Dealt by -10% for 2 rounds. Double this effect (-20%) if the target deals Physical Damage (Command and Habits). Rounds 3,6,9: Deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +60%).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "advantage"
+        ]
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "buff",
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [
+          "buff",
+          "mitigation"
+        ],
+        "self": [],
+        "wants": []
+      }
+    ]
+  },
+  "Sunfyre": {
+    "command": "Rounds 1,4,7,10: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +110%). If you are below 75% Troop Capacity, deal this damage to a 2nd Enemy within adjacency. If you are below 50% Troop Capacity, also deal Fire Damage to the same targets (Damage Rate: +55%), and there is a 50% chance to afflict each target with Burn for 2 round(s).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by 16%. Increase Instinct and Initiative by 20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "burn"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "cleanse",
+          "mitigation"
+        ],
+        "wants": [
+          "vulnerable"
+        ]
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [
+          "buff"
+        ],
+        "self": [
+          "recovery"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Tairax": {
+    "command": "Odd-numbered Rounds: 25% chance to afflict Stagger on 1 Enemy in any lane for 2 round(s). Rounds 2,5,8: Deal Fire Damage to 1 Enemy in any lane (prioritizes targets not afflicted with Burn) (Damage Rate: +115%). Additionally, there is a 50% chance to afflict the target with Burn for 2 round(s).",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by 16%. Increase Instinct and Initiative by 20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "burn",
+          "overwhelm"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "confusion",
+          "overwhelm",
+          "stun",
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "control"
+        ]
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "confusion",
+          "overwhelm",
+          "stun"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "control"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [
+          "buff",
+          "resistance"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "evasion"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Vermithor": {
+    "command": "Rounds 2, 4, 6, 8: Deal Physical Damage (Damage Rate: +30%) and Tactical Damage (Damage Rate: +60%) to 2 Enemies within adjacency. Odd-numbered Rounds: 30% chance to apply Protect to 1 Ally within adjacency with the least troops for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Strength, Intelligence, and Instinct by +15. Reduce Damage Received by -8% of the Ally deployed in the Right Flank.",
+      "self": [
+        {
+          "kind": "stat",
+          "stats": [
+            "strength",
+            "intelligence",
+            "instinct"
+          ],
+          "flat": 15
+        }
+      ],
+      "selfText": "Strength, Intelligence & Instinct +15",
+      "flank": [
+        {
+          "kind": "mitigation",
+          "pct": 0.08
+        }
+      ],
+      "flankPos": "right",
+      "flankText": "Damage Received -8%"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [
+          "buff",
+          "protect"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [
+          "protect"
+        ],
+        "self": [
+          "mitigation",
+          "protect"
+        ],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "mitigation"
+        ],
+        "wants": []
+      }
+    ]
+  },
+  "Starshower": {
+    "command": "Start of Combat: Mark 3 Enemies in any lane with Solar Flare. Each Round: 50% chance to deal Tactical Damage to 1 Enemy with Solar Flare (Damage Rate: +100%). This consumes the Solar Flare mark on the target. Rounds 1, 3, 7, 9: Deal Tactical Damage to 1 Enemy in the same lane (Damage Rate: +80%). At 6+ Stars: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +130%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat. At 10 Stars: When you consume a Solar Flare mark: Reduce the Damage Received by -6% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+9%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Tactical Damage Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "tactical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Tactical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [
+          "solarFlare"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "advantage",
+          "resistance"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff",
+          "cleanse",
+          "evasion"
+        ],
+        "self": [
+          "evasion"
+        ],
+        "wants": []
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [
+          "debuff"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [
+          "solarFlare"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "vulnerable"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [],
+        "grants": [],
+        "self": [],
+        "wants": [
+          "advantage",
+          "resistance"
+        ]
+      }
+    ]
+  },
+  "Moondancer": {
+    "command": "Round 1: Grant Crescent Blade to 1 other Ally Sentinel in any lane until the end of battle. When this target deals Tactical Damage, or applies Recovery, 50% chance to grant Moondancer 1 stack of Rising Tide (Max 8 stacks). This effect cannot trigger more than once per round. Each stack of Rising Tide reduces Moondancer's Damage Received by -2%. Even-numbered Rounds: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +75%). At 6+ Stars: Increase the Physical Damage dealt to +109.5%. Additionally, double this damage dealt (+219%) when you have 4+ stacks of Rising Tide.",
+    "upgrades": [],
+    "vanguard": {
+      "text": "Increase your Physical Damage (Command & Habits) Dealt by +16%. Increase Instinct and Initiative by +20 of the Ally deployed in the Left Flank.",
+      "self": [
+        {
+          "kind": "damage",
+          "type": "physical",
+          "pct": 0.16
+        }
+      ],
+      "selfText": "Physical Damage +16%",
+      "flank": [
+        {
+          "kind": "stat",
+          "stats": [
+            "instinct",
+            "initiative"
+          ],
+          "flat": 20
+        }
+      ],
+      "flankPos": "left",
+      "flankText": "Instinct & Initiative +20"
+    },
+    "effects": [
+      {
+        "star": 1,
+        "source": "command",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "risingTide",
+          "mitigation"
+        ],
+        "wants": [
+          "sentinel"
+        ]
+      },
+      {
+        "star": 2,
+        "source": "habit1",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [
+          "risingTide"
+        ],
+        "wants": [
+          "advantage"
+        ]
+      },
+      {
+        "star": 4,
+        "source": "habit2",
+        "applies": [],
+        "grants": [
+          "buff"
+        ],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 6,
+        "source": "habit3",
+        "applies": [],
+        "grants": [],
+        "self": [
+          "risingTide"
+        ],
+        "wants": [
+          "advantage"
+        ]
+      },
+      {
+        "star": 8,
+        "source": "habit4",
+        "applies": [
+          "bleed"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      },
+      {
+        "star": 10,
+        "source": "habit5",
+        "applies": [
+          "weakened",
+          "slow"
+        ],
+        "grants": [],
+        "self": [],
+        "wants": []
+      }
+    ]
+  }
+}

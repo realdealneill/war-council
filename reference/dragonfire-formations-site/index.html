@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Defense-in-depth: blocks injected inline <script> even if an escaping gap slips through.
+       Allows only our own scripts + the Supabase SDK CDN, and limits where data can be sent. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; base-uri 'self'; form-action 'self'; object-src 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary SEO -->
+  <title>Dragonfire Formations — Best GoT: Dragonfire Formation Optimizer</title>
+  <meta name="description" content="Free Game of Thrones: Dragonfire formation optimizer. Build the best dragon armies — maximize power, troop-type synergy and siege damage across up to 10 formations." />
+  <meta name="keywords" content="Dragonfire formations, Game of Thrones Dragonfire, dragon formation, best dragon formation, Dragonfire optimizer, Dragonfire army builder, GoT Dragonfire dragons, dragon formation calculator" />
+  <meta name="author" content="Dragonfire Formations" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0f0b06" />
+  <link rel="canonical" href="https://dragonfire-formations.com/" />
+
+  <!-- Open Graph (Facebook, Discord, etc.) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Dragonfire Formations" />
+  <meta property="og:title" content="Dragonfire Formations — Best GoT: Dragonfire Formation Optimizer" />
+  <meta property="og:description" content="Build the best Game of Thrones: Dragonfire dragon armies. Maximize power, troop synergy and siege damage across up to 10 formations — free." />
+  <meta property="og:url" content="https://dragonfire-formations.com/" />
+  <meta property="og:image" content="https://dragonfire-formations.com/assets/logo.png" />
+  <meta property="og:image:alt" content="Dragonfire Formations logo" />
+
+  <!-- Twitter / X card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Dragonfire Formations — GoT: Dragonfire Formation Optimizer" />
+  <meta name="twitter:description" content="Build the best Game of Thrones: Dragonfire dragon armies — maximize power, synergy and siege damage. Free formation optimizer." />
+  <meta name="twitter:image" content="https://dragonfire-formations.com/assets/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="assets/logo-square.png" />
+  <link rel="apple-touch-icon" href="assets/logo-square.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Structured data: helps Google understand & rich-list the app -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Dragonfire Formations",
+    "alternateName": "Dragonfire Formation Forge",
+    "url": "https://dragonfire-formations.com/",
+    "description": "Free Game of Thrones: Dragonfire formation optimizer. Build the best dragon armies to maximize power, troop-type synergy and siege damage.",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Any (web browser)",
+    "browserRequirements": "Requires JavaScript",
+    "inLanguage": "en",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "about": { "@type": "VideoGame", "name": "Game of Thrones: Dragonfire" }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-mark" src="assets/logo-square.png" alt="Dragonfire Formation Forge logo" />
+      <div>
+        <h1>Dragonfire Formation Forge</h1>
+        <p class="tagline">Game of Thrones: Dragonfire &middot; best-army dragon optimizer</p>
+      </div>
+    </div>
+    <nav class="actions">
+      <button id="btn-optimize" class="btn btn-primary">&#9889; Optimize Formations</button>
+      <button id="btn-add-list" class="btn">+ From List</button>
+      <button id="btn-add" class="btn">+ Custom</button>
+      <button id="btn-account" class="btn btn-ghost" style="display:none">Sign in</button>
+      <div class="menu">
+        <button id="btn-more" class="btn btn-ghost">&#8943;</button>
+        <div id="more-menu" class="dropdown hidden">
+          <button data-action="seed">Add all dragons (36)</button>
+          <button data-action="add-legendary">Add Legendaries</button>
+          <button data-action="add-epic">Add Epics</button>
+          <button data-action="add-rare">Add Rares</button>
+          <div class="dd-sep"></div>
+          <button data-action="export">Export roster (JSON)</button>
+          <button data-action="import">Import roster (JSON)</button>
+          <button data-action="share">Copy share link</button>
+          <div class="dd-sep"></div>
+          <button data-action="clear" class="danger">Remove all dragons</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: roster -->
+    <section class="panel roster-panel">
+      <div class="panel-head">
+        <h2>Your Dragons <span id="roster-count" class="pill">0</span></h2>
+        <input id="roster-search" type="search" placeholder="Search&hellip;" />
+      </div>
+      <div class="roster-bar">
+        <label for="roster-select" class="roster-bar-label">Roster</label>
+        <select id="roster-select" class="roster-select" title="Switch roster"></select>
+        <div class="menu">
+          <button id="btn-roster-menu" class="btn btn-ghost" title="Manage rosters">&#8943;</button>
+          <div id="roster-menu" class="dropdown hidden">
+            <button data-raction="new-roster">New roster</button>
+            <button data-raction="duplicate-roster">Duplicate this roster</button>
+            <button data-raction="rename-roster">Rename&hellip;</button>
+            <div class="dd-sep"></div>
+            <button data-raction="delete-roster" class="danger">Delete this roster</button>
+          </div>
+        </div>
+      </div>
+      <div class="roster-filters">
+        <label class="rfilter">
+          <span>Sort</span>
+          <select id="roster-sort" title="How to order your dragons">
+            <option value="power">Power</option>
+            <option value="name">Name</option>
+            <option value="rarity">Rarity</option>
+            <option value="breed">Breed</option>
+            <option value="role">Role</option>
+          </select>
+        </label>
+        <label class="rfilter">
+          <span>Breed</span>
+          <select id="roster-breed" title="Show only one breed">
+            <option value="">Any breed</option>
+          </select>
+        </label>
+        <label class="rfilter">
+          <span>Troop</span>
+          <select id="roster-troop" title="Show only dragons specialised in one troop type">
+            <option value="">Any troop</option>
+          </select>
+        </label>
+      </div>
+      <div class="roster-tools">
+        <span id="active-count" class="roster-tools-info">All active</span>
+        <div class="roster-tools-actions">
+          <button type="button" class="linkbtn" data-sel="all">Select all</button>
+          <span class="sep">&middot;</span>
+          <button type="button" class="linkbtn" data-sel="none">Deselect all</button>
+        </div>
+      </div>
+      <div id="roster-list" class="roster-list"></div>
+      <div id="roster-empty" class="empty hidden">
+        <p>No dragons yet.</p>
+        <button class="btn" data-action="seed">Load a sample roster to explore</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: results -->
+    <section class="panel results-panel">
+      <div class="panel-head results-head">
+        <h2 id="results-title">Optimized Formations</h2>
+        <div class="head-controls">
+          <div class="mode-toggle" role="group" aria-label="Formation mode">
+            <button type="button" class="mode-btn on" data-mode="auto"
+              title="Let the optimizer build every formation from scratch">Automatic</button>
+            <button type="button" class="mode-btn" data-mode="manual"
+              title="Place dragons yourself — pick a Vanguard and let the optimizer fill the rest">Manual</button>
+          </div>
+          <div class="enemy-pick">
+            <label for="formation-goal">goal</label>
+            <select id="formation-goal">
+              <option value="balanced" selected>Max Power</option>
+              <option value="siege">Siege</option>
+            </select>
+          </div>
+          <div class="enemy-pick">
+            <label for="army-count"># armies</label>
+            <select id="army-count">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div class="enemy-pick">
+            <label for="enemy-troop">vs enemy troop</label>
+            <select id="enemy-troop">
+              <option value="">(none)</option>
+            </select>
+          </div>
+          <label class="exclude-toggle" title="When on, dragons already pinned in a saved formation for the CURRENT goal are skipped, so each Optimize builds the next team from your remaining dragons. Saves under a different goal don't affect this.">
+            <input type="checkbox" id="exclude-used" />
+            <span>Exclude saved-formation dragons</span>
+          </label>
+        </div>
+      </div>
+      <div id="results-summary" class="summary hidden"></div>
+      <div id="results" class="results"></div>
+      <div id="results-empty" class="empty">
+        <div class="empty-art">&#129704;</div>
+        <h3>Ready to forge your best Dragonfire formations</h3>
+        <p>Add your dragons (or load the sample roster), then hit <strong>Optimize Formations</strong> to build the strongest <em>Game of Thrones: Dragonfire</em> dragon armies &mdash; lineups of 3 dragons each, ranked for maximum power, troop&#8209;type synergy and siege damage across up to 10 formations.</p>
+      </div>
+
+      <div id="saved-section" class="saved-section hidden">
+        <div class="saved-head">
+          <h3>&#128204; Saved Formations <span id="saved-count" class="pill">0</span></h3>
+        </div>
+        <div id="saved-list" class="saved-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Dragon editor modal -->
+  <div id="modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modal-title">Add Dragon</h3>
+        <button id="modal-close" class="icon-btn">&times;</button>
+      </div>
+      <form id="dragon-form" class="form-grid">
+        <label class="field span2">
+          <span>Name</span>
+          <input name="name" required placeholder="e.g. Vhagar" />
+        </label>
+
+        <label class="field">
+          <span>Rarity</span>
+          <select name="rarity" id="f-rarity"></select>
+        </label>
+        <label class="field">
+          <span>Breed</span>
+          <select name="breed" id="f-breed"></select>
+        </label>
+
+        <label class="field">
+          <span>Role</span>
+          <select name="role" id="f-role"></select>
+        </label>
+        <label class="field">
+          <span>Main damage type</span>
+          <select name="damageType" id="f-damage"></select>
+        </label>
+
+        <label class="field">
+          <span>Power <small>(in-game number)</small></span>
+          <input name="power" type="number" min="0" step="any" placeholder="auto-estimate if blank" />
+        </label>
+        <label class="field">
+          <span>Troop capacity <small>(optional)</small></span>
+          <input name="troopCapacity" type="number" min="0" step="any" placeholder="optional" />
+        </label>
+
+        <label class="field">
+          <span>Star rank</span>
+          <input name="starRank" type="number" min="0" max="10" value="1" />
+        </label>
+        <label class="field">
+          <span>Reign level</span>
+          <input name="reignLevel" type="number" min="0" max="50" value="10" />
+        </label>
+
+        <fieldset class="field span2 affinity-box">
+          <legend>Troop affinity <small>+ boost / &middot; neutral / &minus; penalty</small></legend>
+          <div id="affinity-grid" class="affinity-grid"></div>
+        </fieldset>
+
+        <fieldset id="kit-box" class="field span2 kit-box hidden">
+          <legend>Command &amp; Vanguard skills <small>(official &mdash; used for synergy)</small></legend>
+          <div id="kit-body" class="kit-body"></div>
+        </fieldset>
+
+        <fieldset id="tags-box" class="field span2">
+          <legend>Abilities &amp; synergies</legend>
+          <div id="tags-grid" class="tags-grid"></div>
+        </fieldset>
+
+        <fieldset id="habits-box" class="field span2 habits-box hidden">
+          <legend>Habits <small>(passive skills &mdash; unlocked by star rank)</small></legend>
+          <div id="habits-list" class="habits-list"></div>
+        </fieldset>
+
+        <label class="field span2">
+          <span>Notes</span>
+          <textarea name="notes" rows="2" placeholder="Command skill, habits, anything useful&hellip;"></textarea>
+        </label>
+
+        <div class="form-actions span2">
+          <button type="button" id="modal-delete" class="btn btn-ghost danger hidden">Delete</button>
+          <div class="spacer"></div>
+          <button type="button" id="modal-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Dragon</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add-from-list picker -->
+  <div id="picker" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Add a dragon from the list</h3>
+        <button id="picker-close" class="icon-btn">&times;</button>
+      </div>
+      <div class="picker-body">
+        <input id="picker-search" type="search" placeholder="Search dragons by name, breed or role&hellip;" />
+        <div id="picker-list" class="picker-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual mode: choose which dragon stands in one formation slot -->
+  <div id="slot-picker" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="slot-picker-title">Choose a dragon</h3>
+        <button id="slot-picker-close" class="icon-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="picker-body">
+        <p id="slot-picker-hint" class="slot-picker-hint"></p>
+        <input id="slot-search" type="search" placeholder="Search your dragons by name or role&hellip;" />
+        <div id="slot-list" class="picker-list"></div>
+        <div class="slot-picker-actions">
+          <button type="button" id="slot-clear" class="btn btn-ghost danger hidden">Empty this slot</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input id="import-file" type="file" accept="application/json" class="hidden" />
+  <div id="toast" class="toast hidden"></div>
+
+  <footer class="footer">
+    <p><strong>Dragonfire Formations</strong> is a free <em>Game of Thrones: Dragonfire</em> formation optimizer that finds the best dragon armies for power, troop&#8209;type synergy and siege damage. Built for the Dragonfire community &mdash; numbers are editable, so enter your real in-game stats for the most accurate results.</p>
+    <p class="footer-cta">
+      <a id="donate-link" class="donate-link" href="https://www.paypal.com/paypalme/alonostricher" target="_blank" rel="noopener noreferrer">&#10084;&#65039; Support this project &mdash; Donate via PayPal</a>
+    </p>
+    <p class="footer-links"><a href="changelog.html">Changelog</a> &middot; <a href="contact.html">Contact &amp; Feedback</a> &middot; <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a></p>
+    <p class="footer-credit">The dragon Command skills, Vanguard skills and Habit wording shown in this tool are sourced from Dragonfire Hub.<br />
+      Source: Dragonfire Hub &ndash; <a href="https://dragonfire-hub.com" target="_blank" rel="noopener noreferrer">https://dragonfire-hub.com</a></p>
+    <p class="footer-disclaimer">Dragonfire Formations is an unofficial, fan&#8209;made tool. It is not affiliated with, endorsed by, or sponsored by the makers or publishers of <em>Game of Thrones: Dragonfire</em> or any related rights holders. All trademarks belong to their respective owners.</p>
+  </footer>
+
+  <!-- App config + optional Supabase SDK (for Google sign-in / cloud sync) -->
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="js/habits.js"></script>
+  <script src="js/kits.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/optimizer.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/cloud.js"></script>
+</body>
+</html>

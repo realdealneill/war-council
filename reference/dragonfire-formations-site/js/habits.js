@@ -1,0 +1,2850 @@
+/*
+ * habits.js — Habits (passive skills) for every dragon in the roster.
+ *
+ * Habits are the passive abilities a dragon unlocks purely through Star Rank:
+ * every dragon has five, and habit N unlocks at Star Rank N x 2 — so 2*, 4*,
+ * 6*, 8* and 10*. Once unlocked, a habit is upgraded from level 1 to level 5
+ * with Breedmarks (set by breed) and Rarity Cores (set by rarity). Upgrading
+ * never changes what a habit does, only how strongly it does it.
+ *
+ * Each habit therefore stores its wording at all five upgrade levels, as
+ * five-entry arrays indexed level 1 -> 5:
+ *   short — one-line summary (compact UI)
+ *   desc  — the full in-game wording
+ *
+ * Habits are looked up by dragon NAME rather than stored on the roster entry,
+ * so saved/imported rosters stay small and pick up data corrections for free.
+ * A roster entry only records which level each of its habits is at.
+ *
+ * Source of the habit wording and per-level values: Dragonfire Hub
+ * (https://dragonfire-hub.com), credited in the app wherever it is displayed.
+ * Moondancer is the exception — his five habits were transcribed from in-game
+ * screenshots before the Hub listed him, and the app credits him accordingly.
+ * The game rebalances, so treat exact numbers as a close guide rather than
+ * gospel — corrections are welcome through the contact page.
+ */
+
+// Star Rank required for habit 1..5.
+const HABIT_UNLOCK_STARS = [2, 4, 6, 8, 10];
+// Upgrade levels every unlocked habit can be raised through.
+const HABIT_MAX_LEVEL = 5;
+
+const DRAGON_HABITS = {
+  // ---- Legendary ----
+  Syrax: [
+    // 2★
+    { short: [
+        "Intelligence & Instinct +6.5% to 3 Allies",
+        "Intelligence & Instinct +7.8% to 3 Allies",
+        "Intelligence & Instinct +9.1% to 3 Allies",
+        "Intelligence & Instinct +11.05% to 3 Allies",
+        "Intelligence & Instinct +13% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +6.5% until the end of combat.",
+        "Start of Combat: Increase Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +7.8% until the end of combat.",
+        "Start of Combat: Increase Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +9.1% until the end of combat.",
+        "Start of Combat: Increase Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +11.05% until the end of combat.",
+        "Start of Combat: Increase Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +13% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Initiative +6% to 3 Allies | Initiative -6% to 3 Enemies",
+        "Initiative +7.2% to 3 Allies | Initiative -7.2% to 3 Enemies",
+        "Initiative +8.4% to 3 Allies | Initiative -8.4% to 3 Enemies",
+        "Initiative +10.2% to 3 Allies | Initiative -10.2% to 3 Enemies",
+        "Initiative +12% to 3 Allies | Initiative -12% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Increase Initiative by +6% (enhanced by Instinct) of 3 Allies in any lane and reduce Initiative by -6% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +7.2% (enhanced by Instinct) of 3 Allies in any lane and reduce Initiative by -7.2% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +8.4% (enhanced by Instinct) of 3 Allies in any lane and reduce Initiative by -8.4% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +10.2% (enhanced by Instinct) of 3 Allies in any lane and reduce Initiative by -10.2% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +12% (enhanced by Instinct) of 3 Allies in any lane and reduce Initiative by -12% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command Recovery (+50% or +75% w/ Slow) and Resistance -20% (25% chance) to Ally (least troops) (2 rounds)",
+        "Command Recovery (+60% or +90% w/ Slow) and Resistance -20% (30% chance) to Ally (least troops) (2 rounds)",
+        "Command Recovery (+70% or +105% w/ Slow) and Resistance -20% (35% chance) to Ally (least troops) (2 rounds)",
+        "Command Recovery (+85% or +127.5% w/ Slow) and Resistance -20% (42.5% chance) to Ally (least troops) (2 rounds)",
+        "Command Recovery (+100% or +150% w/ Slow) and Resistance -20% (50% chance) to Ally (least troops) (2 rounds)",
+      ],
+      desc: [
+        "Blazing Fury gains: Rounds 2,5,8: Apply Recovery to the Ally with the least troops (Recover Rate: +50%, enhanced by Initiative). The amount of Recovery is increased by 1.5x (+75%) if an Enemy is afflicted with Slow. Additionally, there is a 25% to grant the target Resistance (-20%) for 2 round(s). Resistance reduces the target's Damage Received.",
+        "Blazing Fury gains: Rounds 2,5,8: Apply Recovery to the Ally with the least troops (Recover Rate: +60%, enhanced by Initiative). The amount of Recovery is increased by 1.5x (+90%) if an Enemy is afflicted with Slow. Additionally, there is a 30% to grant the target Resistance (-20%) for 2 round(s). Resistance reduces the target's Damage Received.",
+        "Blazing Fury gains: Rounds 2,5,8: Apply Recovery to the Ally with the least troops (Recover Rate: +70%, enhanced by Initiative). The amount of Recovery is increased by 1.5x (+105%) if an Enemy is afflicted with Slow. Additionally, there is a 35% to grant the target Resistance (-20%) for 2 round(s). Resistance reduces the target's Damage Received.",
+        "Blazing Fury gains: Rounds 2,5,8: Apply Recovery to the Ally with the least troops (Recover Rate: +85%, enhanced by Initiative). The amount of Recovery is increased by 1.5x (+127.5%) if an Enemy is afflicted with Slow. Additionally, there is a 42.5% to grant the target Resistance (-20%) for 2 round(s). Resistance reduces the target's Damage Received.",
+        "Blazing Fury gains: Rounds 2,5,8: Apply Recovery to the Ally with the least troops (Recover Rate: +100%, enhanced by Initiative). The amount of Recovery is increased by 1.5x (+150%) if an Enemy is afflicted with Slow. Additionally, there is a 50% to grant the target Resistance (-20%) for 2 round(s). Resistance reduces the target's Damage Received.",
+      ] },
+    // 8★
+    { short: [
+        "Tactical Dmg 1 Ally (Left Flank/others) & Fire Dmg 1 Ally (Right Flank/others) +18% (3 Rounds)",
+        "Tactical Dmg 1 Ally (Left Flank/others) & Fire Dmg 1 Ally (Right Flank/others) +21.6% (3 Rounds)",
+        "Tactical Dmg 1 Ally (Left Flank/others) & Fire Dmg 1 Ally (Right Flank/others) +25.2% (3 Rounds)",
+        "Tactical Dmg 1 Ally (Left Flank/others) & Fire Dmg 1 Ally (Right Flank/others) +30.6% (3 Rounds)",
+        "Tactical Dmg 1 Ally (Left Flank/others) & Fire Dmg 1 Ally (Right Flank/others) +36% (3 Rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +18% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +21.6% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +25.2% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +30.6% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +36% for 3 rounds.",
+      ] },
+    // 10★
+    { short: [
+        "Cleanse 2 Negative & 1 Control effects from 1 Ally (14% chance)",
+        "Cleanse 2 Negative & 1 Control effects from 1 Ally (18.2% chance)",
+        "Cleanse 2 Negative & 1 Control effects from 1 Ally (22.4% chance)",
+        "Cleanse 2 Negative & 1 Control effects from 1 Ally (28% chance)",
+        "Cleanse 2 Negative & 1 Control effects from 1 Ally (35% chance)",
+      ],
+      desc: [
+        "Each Round: 14% chance to Cleanse 2 Negative and 1 Control effects from 1 Ally in any lane (prioritizes Allies afflicted with a Control Effect).",
+        "Each Round: 18.2% chance to Cleanse 2 Negative and 1 Control effects from 1 Ally in any lane (prioritizes Allies afflicted with a Control Effect).",
+        "Each Round: 22.4% chance to Cleanse 2 Negative and 1 Control effects from 1 Ally in any lane (prioritizes Allies afflicted with a Control Effect).",
+        "Each Round: 28% chance to Cleanse 2 Negative and 1 Control effects from 1 Ally in any lane (prioritizes Allies afflicted with a Control Effect).",
+        "Each Round: 35% chance to Cleanse 2 Negative and 1 Control effects from 1 Ally in any lane (prioritizes Allies afflicted with a Control Effect).",
+      ] },
+  ],
+  Vhagar: [
+    // 2★
+    { short: [
+        "Physical & Fire Dmg Received -12% (3 rounds) | Recovery Received +15% (Round 4+)",
+        "Physical & Fire Dmg Received -14.4% (3 rounds) | Recovery Received +18% (Round 4+)",
+        "Physical & Fire Dmg Received -16.8% (3 rounds) | Recovery Received +21% (Round 4+)",
+        "Physical & Fire Dmg Received -20.4% (3 rounds) | Recovery Received +25.5% (Round 4+)",
+        "Physical & Fire Dmg Received -24% (3 rounds) | Recovery Received +30% (Round 4+)",
+      ],
+      desc: [
+        "Start of Round 1: Reduce your Physical and Tactical Damage Received by -12% for 3 rounds. Start of Round 4: Increase your Recovery Received by +15% until the end of combat.",
+        "Start of Round 1: Reduce your Physical and Tactical Damage Received by -14.4% for 3 rounds. Start of Round 4: Increase your Recovery Received by +18% until the end of combat.",
+        "Start of Round 1: Reduce your Physical and Tactical Damage Received by -16.8% for 3 rounds. Start of Round 4: Increase your Recovery Received by +21% until the end of combat.",
+        "Start of Round 1: Reduce your Physical and Tactical Damage Received by -20.4% for 3 rounds. Start of Round 4: Increase your Recovery Received by +25.5% until the end of combat.",
+        "Start of Round 1: Reduce your Physical and Tactical Damage Received by -24% for 3 rounds. Start of Round 4: Increase your Recovery Received by +30% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Physical Dmg (Command & Habits) +12.5% to 1 Ally (Right Flank/others)",
+        "Physical Dmg (Command & Habits) +15% to 1 Ally (Right Flank/others)",
+        "Physical Dmg (Command & Habits) +17.5% to 1 Ally (Right Flank/others)",
+        "Physical Dmg (Command & Habits) +21.25% to 1 Ally (Right Flank/others)",
+        "Physical Dmg (Command & Habits) +25% to 1 Ally (Right Flank/others)",
+      ],
+      desc: [
+        "Start of Combat: Increase Physical Damage Dealt (Command & Habits) by +12.5% of 1 Ally in any lane (prioritizes the Right Flank) until the end of combat.",
+        "Start of Combat: Increase Physical Damage Dealt (Command & Habits) by +15% of 1 Ally in any lane (prioritizes the Right Flank) until the end of combat.",
+        "Start of Combat: Increase Physical Damage Dealt (Command & Habits) by +17.5% of 1 Ally in any lane (prioritizes the Right Flank) until the end of combat.",
+        "Start of Combat: Increase Physical Damage Dealt (Command & Habits) by +21.25% of 1 Ally in any lane (prioritizes the Right Flank) until the end of combat.",
+        "Start of Combat: Increase Physical Damage Dealt (Command & Habits) by +25% of 1 Ally in any lane (prioritizes the Right Flank) until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Advantage +20% to 1 Ally (most troops) & Weakened -20% to 1 Enemy (17.5% chance) (2 rounds)",
+        "Advantage +20% to 1 Ally (most troops) & Weakened -20% to 1 Enemy (21% chance) (2 rounds)",
+        "Advantage +20% to 1 Ally (most troops) & Weakened -20% to 1 Enemy (24% chance) (2 rounds)",
+        "Advantage +20% to 1 Ally (most troops) & Weakened -20% to 1 Enemy (29.8% chance) (2 rounds)",
+        "Advantage +20% to 1 Ally (most troops) & Weakened -20% to 1 Enemy (35% chance) (2 rounds)",
+      ],
+      desc: [
+        "Rounds 3-7: 17.5% chance to grant Advantage (+20%) to the Ally with the most troops and afflict Weakened (-20%) on the Enemy with the most troops. Each effect lasts for 2 rounds.",
+        "Rounds 3-7: 21% chance to grant Advantage (+20%) to the Ally with the most troops and afflict Weakened (-20%) on the Enemy with the most troops. Each effect lasts for 2 rounds.",
+        "Rounds 3-7: 24.5% chance to grant Advantage (+20%) to the Ally with the most troops and afflict Weakened (-20%) on the Enemy with the most troops. Each effect lasts for 2 rounds.",
+        "Rounds 3-7: 29.8% chance to grant Advantage (+20%) to the Ally with the most troops and afflict Weakened (-20%) on the Enemy with the most troops. Each effect lasts for 2 rounds.",
+        "Rounds 3-7: 35% chance to grant Advantage (+20%) to the Ally with the most troops and afflict Weakened (-20%) on the Enemy with the most troops. Each effect lasts for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received (Command & Habits) to 1 Enemy (Right Flank/others) by +18% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received (Command & Habits) to 1 Enemy (Right Flank/others) by +21.6% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received (Command & Habits) to 1 Enemy (Right Flank/others) by +25.2% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received (Command & Habits) to 1 Enemy (Right Flank/others) by +30.6% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received (Command & Habits) to 1 Enemy (Right Flank/others) by +36% (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +18% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +21.6% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +25.2% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +30.6% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +36% for 3 rounds.",
+      ] },
+    // 10★
+    { short: [
+        "Strength +5% & Physical+Tactical Dmg Received -2.5% per-stack (Max 5) (30% chance) | Physical Dmg +100% to 1 Enemy w/ 3+ stacks (same lane)",
+        "Strength +6.5% & Physical+Tactical Dmg Received -3.25% per-stack (Max 5) (30% chance) | Physical Dmg +100% to 1 Enemy w/ 3+ stacks (same lane)",
+        "Strength +8% & Physical+Tactical Dmg Received -4% per-stack (Max 5) (30% chance) | Physical Dmg +100% to 1 Enemy w/ 3+ stacks (same lane)",
+        "Strength +10% & Physical+Tactical Dmg Received -5% per-stack (Max 5) (30% chance) | Physical Dmg +100% to 1 Enemy w/ 3+ stacks (same lane)",
+        "Strength +12.5% & Physical+Tactical Dmg Received -6.25% per-stack (Max 5) (30% chance) | Physical Dmg +100% to 1 Enemy w/ 3+ stacks (same lane)",
+      ],
+      desc: [
+        "Each Round: 30% chance to gain 1 stack of Bulwark (Max 5 Stacks) until the end of combat. Each Stack of Bulwark increases your Strength by +5% and reduces your Physical and Tactical Damage Received by -2.5%. Gain 3rd Stack of Bulwark: Deal Physical Damage (Damage Rate: +100%) to 1 Enemy in the same lane.",
+        "Each Round: 30% chance to gain 1 stack of Bulwark (Max 5 Stacks) until the end of combat. Each Stack of Bulwark increases your Strength by +6.5% and reduces your Physical and Tactical Damage Received by -3.25%. Gain 3rd Stack of Bulwark: Deal Physical Damage (Damage Rate: +130%) to 1 Enemy in the same lane.",
+        "Each Round: 30% chance to gain 1 stack of Bulwark (Max 5 Stacks) until the end of combat. Each Stack of Bulwark increases your Strength by +8% and reduces your Physical and Tactical Damage Received by -4%. Gain 3rd Stack of Bulwark: Deal Physical Damage (Damage Rate: +160%) to 1 Enemy in the same lane.",
+        "Each Round: 30% chance to gain 1 stack of Bulwark (Max 5 Stacks) until the end of combat. Each Stack of Bulwark increases your Strength by +10% and reduces your Physical and Tactical Damage Received by -5%. Gain 3rd Stack of Bulwark: Deal Physical Damage (Damage Rate: +200%) to 1 Enemy in the same lane.",
+        "Each Round: 30% chance to gain 1 stack of Bulwark (Max 5 Stacks) until the end of combat. Each Stack of Bulwark increases your Strength by +12.5% and reduces your Physical and Tactical Damage Received by -6.25%. Gain 3rd Stack of Bulwark: Deal Physical Damage (Damage Rate: +250%) to 1 Enemy in the same lane.",
+      ] },
+  ],
+  Caraxes: [
+    // 2★
+    { short: [
+        "Strength & Initiative -6.5% to 3 Enemies",
+        "Strength & Initiative -7.8% to 3 Enemies",
+        "Strength & Initiative -9.1% to 3 Enemies",
+        "Strength & Initiative -11.05% to 3 Enemies",
+        "Strength & Initiative -13% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Strength and Initiative (Enhanced by Intelligence) of 3 Enemies in any lane by -6.5% until the end of combat.",
+        "Start of Combat: Reduce Strength and Initiative (Enhanced by Intelligence) of 3 Enemies in any lane by -7.8% until the end of combat.",
+        "Start of Combat: Reduce Strength and Initiative (Enhanced by Intelligence) of 3 Enemies in any lane by -9.1% until the end of combat.",
+        "Start of Combat: Reduce Strength and Initiative (Enhanced by Intelligence) of 3 Enemies in any lane by -11.05% until the end of combat.",
+        "Start of Combat: Reduce Strength and Initiative (Enhanced by Intelligence) of 3 Enemies in any lane by -13% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Fire Dmg +12.5%",
+        "Fire Dmg +15%",
+        "Fire Dmg +17.5%",
+        "Fire Dmg +21.25%",
+        "Fire Dmg +25%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Fire Damage Dealt by +12.5% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +15% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +17.5% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +21.25% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +25% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Slow & Burn +20% to 3 Enemies (10% chance) (2 Rounds)",
+        "Slow & Burn +20% to 3 Enemies (12% chance) (2 Rounds)",
+        "Slow & Burn +20% to 3 Enemies (14% chance) (2 Rounds)",
+        "Slow & Burn +20% to 3 Enemies (17% chance) (2 Rounds)",
+        "Slow & Burn +20% to 3 Enemies (20% chance) (2 Rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to afflict Slow and Burn (Damage Rate: +20%) on 3 Enemies in any lane. Each effect is checked separately for each target and lasts for 2 rounds.",
+        "Each Round: 12% chance to afflict Slow and Burn (Damage Rate: +20%) on 3 Enemies in any lane. Each effect is checked separately for each target and lasts for 2 rounds.",
+        "Each Round: 14% chance to afflict Slow and Burn (Damage Rate: +20%) on 3 Enemies in any lane. Each effect is checked separately for each target and lasts for 2 rounds.",
+        "Each Round: 17% chance to afflict Slow and Burn (Damage Rate: +20%) on 3 Enemies in any lane. Each effect is checked separately for each target and lasts for 2 rounds.",
+        "Each Round: 20% chance to afflict Slow and Burn (Damage Rate: +20%) on 3 Enemies in any lane. Each effect is checked separately for each target and lasts for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg (Command & Habits) -5.5% to 3 Enemies",
+        "Physical Dmg (Command & Habits) -6.6% to 3 Enemies",
+        "Physical Dmg (Command & Habits) -7.7% to 3 Enemies",
+        "Physical Dmg (Command & Habits) -9.35% to 3 Enemies",
+        "Physical Dmg (Command & Habits) -11% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Physical Damage Dealt (Command & Habits) by -5.5% of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Dealt (Command & Habits) by -6.6% of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Dealt (Command & Habits) by -7.7% of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Dealt (Command & Habits) by -9.35% of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Dealt (Command & Habits) by -11% of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Fire Dmg +8% if Enemy <50% troops | Recovery +40% if Enemy retreat",
+        "Fire Dmg +10.4% if Enemy <50% troops | Recovery +52% if Enemy retreat",
+        "Fire Dmg +12.8% if Enemy <50% troops | Recovery +64% if Enemy retreat",
+        "Fire Dmg +16% if Enemy <50% troops | Recovery +80% if Enemy retreat",
+        "Fire Dmg +20% if Enemy <50% troops | Recovery +100% if Enemy retreat",
+      ],
+      desc: [
+        "Each Round: For each Enemy that is below 50% max troop capacity, increase your Fire Damage Dealt by +8%. For each Enemy that retreated in the previous round, apply Recovery (Recovery Rate: +40%, enhanced by Initiative) to yourself.",
+        "Each Round: For each Enemy that is below 50% max troop capacity, increase your Fire Damage Dealt by +10.4%. For each Enemy that retreated in the previous round, apply Recovery (Recovery Rate: +52%, enhanced by Initiative) to yourself.",
+        "Each Round: For each Enemy that is below 50% max troop capacity, increase your Fire Damage Dealt by +12.8%. For each Enemy that retreated in the previous round, apply Recovery (Recovery Rate: +64%, enhanced by Initiative) to yourself.",
+        "Each Round: For each Enemy that is below 50% max troop capacity, increase your Fire Damage Dealt by +16%. For each Enemy that retreated in the previous round, apply Recovery (Recovery Rate: +80%, enhanced by Initiative) to yourself.",
+        "Each Round: For each Enemy that is below 50% max troop capacity, increase your Fire Damage Dealt by +20%. For each Enemy that retreated in the previous round, apply Recovery (Recovery Rate: +100%, enhanced by Initiative) to yourself.",
+      ] },
+  ],
+  Seasmoke: [
+    // 2★
+    { short: [
+        "Intelligence +22% & Initiative +12.5% to 1 Ally (highest Intelligence)",
+        "Intelligence +26.4% & Initiative +15% to 1 Ally (highest Intelligence)",
+        "Intelligence +30.8% & Initiative +17.5% to 1 Ally (highest Intelligence)",
+        "Intelligence +37.4% & Initiative +21.25% to 1 Ally (highest Intelligence)",
+        "Intelligence +44% & Initiative +25% to 1 Ally (highest Intelligence)",
+      ],
+      desc: [
+        "Start of Combat: Increase Intelligence by +22% and Initiative by +12.5% of the Ally with the highest Intelligence until the end of combat.",
+        "Start of Combat: Increase Intelligence by +26.4% and Initiative by +15% of the Ally with the highest Intelligence until the end of combat.",
+        "Start of Combat: Increase Intelligence by +30.8% and Initiative by +17.5% of the Ally with the highest Intelligence until the end of combat.",
+        "Start of Combat: Increase Intelligence by +37.4% and Initiative by +21.25% of the Ally with the highest Intelligence until the end of combat.",
+        "Start of Combat: Increase Intelligence by +44% and Initiative by +25% of the Ally with the highest Intelligence until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Initiative +12.5% to 3 Allies",
+        "Initiative +15% to 3 Allies",
+        "Initiative +17.5% to 3 Allies",
+        "Initiative +21.25% to 3 Allies",
+        "Initiative +25% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Initiative by 12.5% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by 15% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by 17.5% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by 21.25% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by 25% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Recovery Received -15% per-stack to 1 Enemy (Max 3) (3 rounds) | Physical Dmg (+30% or +60% w/ Panic) to 2 Enemies adjacency",
+        "Recovery Received -18% per-stack to 1 Enemy (Max 3) (3 rounds) | Physical Dmg (+36% or +72% w/ Panic) to 2 Enemies adjacency",
+        "Recovery Received -21% per-stack to 1 Enemy (Max 3) (3 rounds) | Physical Dmg (+42% or +84% w/ Panic) to 2 Enemies adjacency",
+        "Recovery Received -25.5% per-stack to 1 Enemy (Max 3) (3 rounds) | Physical Dmg (+51% or +102% w/ Panic) to 2 Enemies adjacency",
+        "Recovery Received -30% per-stack to 1 Enemy (Max 3) (3 rounds) | Physical Dmg (+60% or +120% w/ Panic) to 2 Enemies adjacency",
+      ],
+      desc: [
+        "Each Round: Command gains when you Cleanse an Enemy, afflict the target with 1 stack of Infectious Wrath (Max 3 stacks) for 3 rounds. Each stack of Infectious Wrath reduces the targets Recovery Received by -15%. Rounds 3,6,9: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +30%). This damage is doubled (+60%) if the target is afflicted with Panic.",
+        "Each Round: Command gains when you Cleanse an Enemy, afflict the target with 1 stack of Infectious Wrath (Max 3 stacks) for 3 rounds. Each stack of Infectious Wrath reduces the targets Recovery Received by -18%. Rounds 3,6,9: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +36%). This damage is doubled (+72%) if the target is afflicted with Panic.",
+        "Each Round: Command gains when you Cleanse an Enemy, afflict the target with 1 stack of Infectious Wrath (Max 3 stacks) for 3 rounds. Each stack of Infectious Wrath reduces the targets Recovery Received by -21%. Rounds 3,6,9: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +42%). This damage is doubled (+84%) if the target is afflicted with Panic.",
+        "Each Round: Command gains when you Cleanse an Enemy, afflict the target with 1 stack of Infectious Wrath (Max 3 stacks) for 3 rounds. Each stack of Infectious Wrath reduces the targets Recovery Received by -25.5%. Rounds 3,6,9: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +51%). This damage is doubled (+102%) if the target is afflicted with Panic.",
+        "Each Round: Command gains when you Cleanse an Enemy, afflict the target with 1 stack of Infectious Wrath (Max 3 stacks) for 3 rounds. Each stack of Infectious Wrath reduces the targets Recovery Received by -30%. Rounds 3,6,9: Deal Physical Damage to 2 Enemies within adjacency (Damage Rate: +60%). This damage is doubled (+120%) if the target is afflicted with Panic.",
+      ] },
+    // 8★
+    { short: [
+        "Intelligence +7.5% | Fire Dmg +5% to 2 Allies adjacency",
+        "Intelligence +9% | Fire Dmg +6% to 2 Allies adjacency",
+        "Intelligence +10.5% | Fire Dmg +7% to 2 Allies adjacency",
+        "Intelligence +12.75% | Fire Dmg +8% to 2 Allies adjacency",
+        "Intelligence +15% | Fire Dmg +10% to 2 Allies adjacency",
+      ],
+      desc: [
+        "Start of Combat: Increase the Intelligence by +7.5% (enhanced by Instinct) and the Fire Damage Dealt by +5% of 2 Allies within adjacency until the end of combat.",
+        "Start of Combat: Increase the Intelligence by +9% (enhanced by Instinct) and the Fire Damage Dealt by +6% of 2 Allies within adjacency until the end of combat.",
+        "Start of Combat: Increase the Intelligence by +10.5% (enhanced by Instinct) and the Fire Damage Dealt by +7% of 2 Allies within adjacency until the end of combat.",
+        "Start of Combat: Increase the Intelligence by +12.75% (enhanced by Instinct) and the Fire Damage Dealt by +8.5% of 2 Allies within adjacency until the end of combat.",
+        "Start of Combat: Increase the Intelligence by +15% (enhanced by Instinct) and the Fire Damage Dealt by +10% of 2 Allies within adjacency until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Advantage (+20%) to 2 Allies w/ >50% troop (10% chance) (2 rounds) | Resistance (-20%) to 2 Allies w/ <50% troop (10% chance) (2 rounds)",
+        "Advantage (+20%) to 2 Allies w/ >50% troop (13% chance) (2 rounds) | Resistance (-20%) to 2 Allies w/ <50% troop (13% chance) (2 rounds)",
+        "Advantage (+20%) to 2 Allies w/ >50% troop (16% chance) (2 rounds) | Resistance (-20%) to 2 Allies w/ <50% troop (16% chance) (2 rounds)",
+        "Advantage (+20%) to 2 Allies w/ >50% troop (20% chance) (2 rounds) | Resistance (-20%) to 2 Allies w/ <50% troop (20% chance) (2 rounds)",
+        "Advantage (+20%) to 2 Allies w/ >50% troop (25% chance) (2 rounds) | Resistance (-20%) to 2 Allies w/ <50% troop (25% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to grant Advantage (+20%) to 2 other Allies in any lane that are above 50% troop capacity for 2 rounds. Each Round: 10% chance to grant Resistance (-20%) to 2 other Allies in any lane that are below 50% troop capacity for 2 rounds.",
+        "Each Round: 13% chance to grant Advantage (+20%) to 2 other Allies in any lane that are above 50% troop capacity for 2 rounds. Each Round: 13% chance to grant Resistance (-20%) to 2 other Allies in any lane that are below 50% troop capacity for 2 rounds.",
+        "Each Round: 16% chance to grant Advantage (+20%) to 2 other Allies in any lane that are above 50% troop capacity for 2 rounds. Each Round: 16% chance to grant Resistance (-20%) to 2 other Allies in any lane that are below 50% troop capacity for 2 rounds.",
+        "Each Round: 20% chance to grant Advantage (+20%) to 2 other Allies in any lane that are above 50% troop capacity for 2 rounds. Each Round: 20% chance to grant Resistance (-20%) to 2 other Allies in any lane that are below 50% troop capacity for 2 rounds.",
+        "Each Round: 25% chance to grant Advantage (+20%) to 2 other Allies in any lane that are above 50% troop capacity for 2 rounds. Each Round: 25% chance to grant Resistance (-20%) to 2 other Allies in any lane that are below 50% troop capacity for 2 rounds.",
+      ] },
+  ],
+  Crimson: [
+    // 2★
+    { short: [
+        "Tactical Dmg -13.5% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -16.2% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -18.9% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -22.95% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -27% to 1 Enemy w/ Tactical Dmg",
+      ],
+      desc: [
+        "Start of Combat: Reduce Tactical Damage Dealt by -13.5% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -16.2% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -18.9% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -22.95% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -27% of 1 Enemy that deals Tactical Damage until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Received -6% | Intelligence +12%",
+        "Dmg Received -7.2% | Intelligence +14.4%",
+        "Dmg Received -8.4% | Intelligence +16.8%",
+        "Dmg Received -10.2% | Intelligence +20.4%",
+        "Dmg Received -12% | Intelligence +24%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Intelligence by +12% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7.2% and increase your Intelligence by +14.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.4% and increase your Intelligence by +16.8% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10.2% and increase your Intelligence by +20.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -12% and increase your Intelligence by +24% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Weakened (-20%) 1 Enemy (NOT Stunned/others) (17.5% or 35% chance w/ Taunt) (2 rounds)",
+        "Weakened (-20%) 1 Enemy (NOT Stunned/others) (21% or 42% chance w/ Taunt) (2 rounds)",
+        "Weakened (-20%) 1 Enemy (NOT Stunned/others) (24.5% or 49% chance w/ Taunt) (2 rounds)",
+        "Weakened (-20%) 1 Enemy (NOT Stunned/others) (29.75% or 59.5% chance w/ Taunt) (2 rounds)",
+        "Weakened (-20%) 1 Enemy (NOT Stunned/others) (35% or 70% chance w/ Taunt) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 17.5% chance to afflict Weakened (-20%) on 1 Enemy in any lane (prioritizes target NOT afflicted with Stun) for 2 rounds. This chance is doubled (35%) against targets afflicted with Taunt.",
+        "Each Round: 21% chance to afflict Weakened (-20%) on 1 Enemy in any lane (prioritizes target NOT afflicted with Stun) for 2 rounds. This chance is doubled (42%) against targets afflicted with Taunt.",
+        "Each Round: 24.5% chance to afflict Weakened (-20%) on 1 Enemy in any lane (prioritizes target NOT afflicted with Stun) for 2 rounds. This chance is doubled (49%) against targets afflicted with Taunt.",
+        "Each Round: 29.75% chance to afflict Weakened (-20%) on 1 Enemy in any lane (prioritizes target NOT afflicted with Stun) for 2 rounds. This chance is doubled (59.5%) against targets afflicted with Taunt.",
+        "Each Round: 35% chance to afflict Weakened (-20%) on 1 Enemy in any lane (prioritizes target NOT afflicted with Stun) for 2 rounds. This chance is doubled (70%) against targets afflicted with Taunt.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg (Command & Habits) & Fire Dmg +10% to 3 Enemies w/ >75% troops | Recovery -20% to 3 Enemies w/ <25% troops",
+        "Physical Dmg (Command & Habits) & Fire Dmg +12% to 3 Enemies w/ >75% troops | Recovery -24% to 3 Enemies w/ <25% troops",
+        "Physical Dmg (Command & Habits) & Fire Dmg +14% to 3 Enemies w/ >75% troops | Recovery -28% to 3 Enemies w/ <25% troops",
+        "Physical Dmg (Command & Habits) & Fire Dmg +17% to 3 Enemies w/ >75% troops | Recovery -34% to 3 Enemies w/ <25% troops",
+        "Physical Dmg (Command & Habits) & Fire Dmg +20% to 3 Enemies w/ >75% troops | Recovery -40% to 3 Enemies w/ <25% troops",
+      ],
+      desc: [
+        "Each Round: Increase Physical Damage Received (Command & Habits) and Fire Damage Received by +10% for all Enemies above 75% max troop capacity until the end of the round. Each Round: Reduce Recovery Received by -20% for all Enemies below 25% max troop capacity until the end of the round.",
+        "Each Round: Increase Physical Damage Received (Command & Habits) and Fire Damage Received by +12% for all Enemies above 75% max troop capacity until the end of the round. Each Round: Reduce Recovery Received by -24% for all Enemies below 25% max troop capacity until the end of the round",
+        "Each Round: Increase Physical Damage Received (Command & Habits) and Fire Damage Received by +14% for all Enemies above 75% max troop capacity until the end of the round. Each Round: Reduce Recovery Received by -28% for all Enemies below 25% max troop capacity until the end of the round.",
+        "Each Round: Increase Physical Damage Received (Command & Habits) and Fire Damage Received by +17% for all Enemies above 75% max troop capacity until the end of the round. Each Round: Reduce Recovery Received by -34% for all Enemies below 25% max troop capacity until the end of the round.",
+        "Each Round: Increase Physical Damage Received (Command & Habits) and Fire Damage Received by +20% for all Enemies above 75% max troop capacity until the end of the round. Each Round: Reduce Recovery Received by -40% for all Enemies below 25% max troop capacity until the end of the round.",
+      ] },
+    // 10★
+    { short: [
+        "Command gains Instinct & Initiative -12% to 1 Enemy (highest Instinct) (50% chance) (2 rounds) | Stun (40% chance)",
+        "Command gains Instinct & Initiative -15.6% to 1 Enemy (highest Instinct) (50% chance) (2 rounds) | Stun (52% chance)",
+        "Command gains Instinct & Initiative -19.2% to 1 Enemy (highest Instinct) (50% chance) (2 rounds) | Stun (64% chance)",
+        "Command gains Instinct & Initiative -24% to 1 Enemy (highest Instinct) (50% chance) (2 rounds) | Stun (80% chance)",
+        "Command gains Instinct & Initiative -30% to 1 Enemy (highest Instinct) (50% chance) (2 rounds) | Stun (100% chance)",
+      ],
+      desc: [
+        "Even-numbered Rounds: Command gains 50% chance to reduce Instinct and Initiative by -12% (enhanced by Intelligence) of the Enemy with the highest Instinct for 2 rounds. Round 1: The chance to Stun is increased to 40%.",
+        "Even-numbered Rounds: Command gains 50% chance to reduce Instinct and Initiative by -15.6% (enhanced by Intelligence) of the Enemy with the highest Instinct for 2 rounds. Round 1: The chance to Stun is increased to 52%.",
+        "Even-numbered Rounds: Command gains 50% chance to reduce Instinct and Initiative by -19.2% (enhanced by Intelligence) of the Enemy with the highest Instinct for 2 rounds. Round 1: The chance to Stun is increased to 64%.",
+        "Even-numbered Rounds: Command gains 50% chance to reduce Instinct and Initiative by -24% (enhanced by Intelligence) of the Enemy with the highest Instinct for 2 rounds. Round 1: The chance to Stun is increased to 80%.",
+        "Even-numbered Rounds: Command gains 50% chance to reduce Instinct and Initiative by -30% (enhanced by Intelligence) of the Enemy with the highest Instinct for 2 rounds. Round 1: The chance to Stun is increased to 100%.",
+      ] },
+  ],
+  Kalspire: [
+    // 2★
+    { short: [
+        "Strength & Instinct +20%",
+        "Strength & Instinct +24%",
+        "Strength & Instinct +28%",
+        "Strength & Instinct +34%",
+        "Strength & Instinct +40%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Strength and Instinct by +20% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +24% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +28% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +34% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +40% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Strength & Intelligence -6.5% to 3 Enemies",
+        "Strength & Intelligence -7.8% to 3 Enemies",
+        "Strength & Intelligence -9.1% to 3 Enemies",
+        "Strength & Intelligence -11.05% to 3 Enemies",
+        "Strength & Intelligence -13% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Strength and Intelligence by -6.5% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -7.8% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -9.1% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -11.05% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -13% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command Physical Dmg +25% to 1 Enemy adjacency | Panic 2 Enemies adjacency (15% chance) (2 Rounds)",
+        "Command Physical Dmg +30% to 1 Enemy adjacency | Panic 2 Enemies adjacency (18% chance) (2 Rounds)",
+        "Command Physical Dmg +35% to 1 Enemy adjacency | Panic 2 Enemies adjacency (21% chance) (2 Rounds)",
+        "Command Physical Dmg +42.5% to 1 Enemy adjacency | Panic 2 Enemies adjacency (25.5% chance) (2 Rounds)",
+        "Command Physical Dmg +50% to 1 Enemy adjacency | Panic 2 Enemies adjacency (30% chance) (2 Rounds)",
+      ],
+      desc: [
+        "After each Basic Attack: Command deal Physical Damage to 1 Enemy within adjacency that was not the target of your Basic Attack (Damage Rate: +25%). Additionally, there is a 15% chance to afflict with Panic the target and 1 other Enemy within adjacency for 2 rounds. This chance is checked separately for each target.",
+        "After each Basic Attack: Command deal Physical Damage to 1 Enemy within adjacency that was not the target of your Basic Attack (Damage Rate: +30%). Additionally, there is a 18% chance to afflict with Panic the target and 1 other Enemy within adjacency for 2 rounds. This chance is checked separately for each target.",
+        "After each Basic Attack: Command deal Physical Damage to 1 Enemy within adjacency that was not the target of your Basic Attack (Damage Rate: +35%). Additionally, there is a 21% chance to afflict with Panic the target and 1 other Enemy within adjacency for 2 rounds. This chance is checked separately for each target.",
+        "After each Basic Attack: Command deal Physical Damage to 1 Enemy within adjacency that was not the target of your Basic Attack (Damage Rate: +42.5%). Additionally, there is a 25.5% chance to afflict with Panic the target and 1 other Enemy within adjacency for 2 rounds. This chance is checked separately for each target.",
+        "After each Basic Attack: Command deal Physical Damage to 1 Enemy within adjacency that was not the target of your Basic Attack (Damage Rate: +50%). Additionally, there is a 30% chance to afflict with Panic the target and 1 other Enemy within adjacency for 2 rounds. This chance is checked separately for each target.",
+      ] },
+    // 8★
+    { short: [
+        "Dmg Received -6% | Instinct +12%",
+        "Dmg Received -7.2% | Instinct +14.4%",
+        "Dmg Received -8.4% | Instinct +16.8%",
+        "Dmg Received -10.2% | Instinct +20.4%",
+        "Dmg Received -12% | Instinct +24%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Instinct by +12% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7.2% and increase your Instinct by +14.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.4% and increase your Instinct by +16.8% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10.2% and increase your Instinct by +20.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -12% and increase your Instinct by +24% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Dmg Received -50% (1 Rounds) | Physical Dmg (Command & Habits) Enemy (highest Strength) & Fire Dmg Enemy (highest Intelligence) by -10% (5 rounds)",
+        "Dmg Received -50% (1 Rounds) | Physical Dmg (Command & Habits) Enemy (highest Strength) & Fire Dmg Enemy (highest Intelligence) by -13% (5 rounds)",
+        "Dmg Received -50% (1 Rounds) | Physical Dmg (Command & Habits) Enemy (highest Strength) & Fire Dmg Enemy (highest Intelligence) by -16% (5 rounds)",
+        "Dmg Received -50% (1 Rounds) | Physical Dmg (Command & Habits) Enemy (highest Strength) & Fire Dmg Enemy (highest Intelligence) by -20% (5 rounds)",
+        "Dmg Received -50% (1 Rounds) | Physical Dmg (Command & Habits) Enemy (highest Strength) & Fire Dmg Enemy (highest Intelligence) by -25% (5 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Reduce your Damage Received by -50% for 1 rounds. However, you are also afflicted with Stun for 1 rounds. Start of Round 2: Reduce the Physical Damage Dealt (Command & Habits) of the Enemy with the highest Strength, and the Fire Damage Dealt of the Enemy with the highest Intelligence by -10% for 5 rounds.",
+        "Start of Round 1: Reduce your Damage Received by -50% for 1 rounds. However, you are also afflicted with Stun for 1 rounds. Start of Round 2: Reduce the Physical Damage Dealt (Command & Habits) of the Enemy with the highest Strength, and the Fire Damage Dealt of the Enemy with the highest Intelligence by -13% for 5 rounds.",
+        "Start of Round 1: Reduce your Damage Received by -50% for 1 rounds. However, you are also afflicted with Stun for 1 rounds. Start of Round 2: Reduce the Physical Damage Dealt (Command & Habits) of the Enemy with the highest Strength, and the Fire Damage Dealt of the Enemy with the highest Intelligence by -16% for 5 rounds.",
+        "Start of Round 1: Reduce your Damage Received by -50% for 1 rounds. However, you are also afflicted with Stun for 1 rounds. Start of Round 2: Reduce the Physical Damage Dealt (Command & Habits) of the Enemy with the highest Strength, and the Fire Damage Dealt of the Enemy with the highest Intelligence by -20% for 5 rounds.",
+        "Start of Round 1: Reduce your Damage Received by -50% for 1 rounds. However, you are also afflicted with Stun for 1 rounds. Start of Round 2: Reduce the Physical Damage Dealt (Command & Habits) of the Enemy with the highest Strength, and the Fire Damage Dealt of the Enemy with the highest Intelligence by -25% for 5 rounds.",
+      ] },
+  ],
+  Malachite: [
+    // 2★
+    { short: [
+        "Physical Dmg (Command & Habits) +8% & Tactical Dmg Received -8% to 2 Allies (35% chance) (2 Rounds)",
+        "Physical Dmg (Command & Habits) +9.6% & Tactical Dmg Received -9.6% to 2 Allies (35% chance) (2 Rounds)",
+        "Physical Dmg (Command & Habits) +11.2% & Tactical Dmg Received -11.2% to 2 Allies (35% chance) (2 Rounds)",
+        "Physical Dmg (Command & Habits) +13.6% & Tactical Dmg Received -13.6% to 2 Allies (35% chance) (2 Rounds)",
+        "Physical Dmg (Command & Habits) +16% & Tactical Dmg Received -16% to 2 Allies (35% chance) (2 Rounds)",
+      ],
+      desc: [
+        "Each Round: 35% chance to increase the Physical Damage Dealt (Command & Habits) by +8% and reduce the Tactical Damage Received by -8% of 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 35% chance to increase the Physical Damage Dealt (Command & Habits) by +9.6% and reduce the Tactical Damage Received by -9.6% of 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 35% chance to increase the Physical Damage Dealt (Command & Habits) by +11.2% and reduce the Tactical Damage Received by -11.2% of 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 35% chance to increase the Physical Damage Dealt (Command & Habits) by +13.6% and reduce the Tactical Damage Received by -13.6% of 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 35% chance to increase the Physical Damage Dealt (Command & Habits) by +16% and reduce the Tactical Damage Received by -16% of 2 other Allies in any lane for 2 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Instinct & Recovery +20%",
+        "Instinct & Recovery +24%",
+        "Instinct & Recovery +28%",
+        "Instinct & Recovery +34%",
+        "Instinct & Recovery +40%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Instinct by +20% and Recovery Dealt by +20% until the end of combat.",
+        "Start of Combat: Increase your Instinct by +24% and Recovery Dealt by +24% until the end of combat.",
+        "Start of Combat: Increase your Instinct by +28% and Recovery Dealt by +28% until the end of combat.",
+        "Start of Combat: Increase your Instinct by +34% and Recovery Dealt by +34% until the end of combat.",
+        "Start of Combat: Increase your Instinct by +40% and Recovery Dealt by +40% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Grant Advantage +20% to 2 Allies (10% chance) (2 Rounds)",
+        "Grant Advantage +20% to 2 Allies (12% chance) (2 Rounds)",
+        "Grant Advantage +20% to 2 Allies (14% chance) (2 Rounds)",
+        "Grant Advantage +20% to 2 Allies (17% chance) (2 Rounds)",
+        "Grant Advantage +20% to 2 Allies (20% chance) (2 Rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to grant Advantage (+20%) to 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 12% chance to grant Advantage (+20%) to 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 14% chance to grant Advantage (+20%) to 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 17% chance to grant Advantage (+20%) to 2 other Allies in any lane for 2 rounds.",
+        "Each Round: 20% chance to grant Advantage (+20%) to 2 other Allies in any lane for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Strength +12.5% to 3 Allies",
+        "Strength +15% to 3 Allies",
+        "Strength +17.5% to 3 Allies",
+        "Strength +21.25% to 3 Allies",
+        "Strength +25% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Strength by 12.5% (enhanced by Strength) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength by 15% (enhanced by Strength) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength by 17.5% (enhanced by Strength) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength by 21.25% (enhanced by Strength) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength by 25% (enhanced by Strength) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Grant First-Strike, Double-Strike, & Strength +25% for 1 Ally Adjacency (30% chance) (3 Rounds)",
+        "Grant First-Strike, Double-Strike, & Strength +25% for 1 Ally Adjacency (52% chance) (3 Rounds)",
+        "Grant First-Strike, Double-Strike, & Strength +25% for 1 Ally Adjacency (64% chance) (3 Rounds)",
+        "Grant First-Strike, Double-Strike, & Strength +25% for 1 Ally Adjacency (80% chance) (3 Rounds)",
+        "Grant First-Strike, Double-Strike, & Strength +25% for 1 Ally Adjacency (100% chance) (3 Rounds)",
+      ],
+      desc: [
+        "Start of Round 1: 40% chance to grant First-Strike, Double-Strike, and increase Strength by +25% (enhanced by Instinct) of 1 other Ally within adjacency for 3 rounds.",
+        "Start of Round 1: 52% chance to grant First-Strike, Double-Strike, and increase Strength by +25% (enhanced by Instinct) of 1 other Ally within adjacency for 3 rounds.",
+        "Start of Round 1: 64% chance to grant First-Strike, Double-Strike, and increase Strength by +25% (enhanced by Instinct) of 1 other Ally within adjacency for 3 rounds.",
+        "Start of Round 1: 80% chance to grant First-Strike, Double-Strike, and increase Strength by +25% (enhanced by Instinct) of 1 other Ally within adjacency for 3 rounds.",
+        "Start of Round 1: 100% chance to grant First-Strike, Double-Strike, and increase Strength by +25% (enhanced by Instinct) of 1 other Ally within adjacency for 3 rounds.",
+      ] },
+  ],
+  Venator: [
+    // 2★
+    { short: [
+        "Intelligence -30% to 1 Enemy (Hunters/others)",
+        "Intelligence -36% to 1 Enemy (Hunters/others)",
+        "Intelligence -42% to 1 Enemy (Hunters/others)",
+        "Intelligence -51% to 1 Enemy (Hunters/others)",
+        "Intelligence -60% to 1 Enemy (Hunters/others)",
+      ],
+      desc: [
+        "Start of Combat: Reduce Intelligence by -30% (enhanced by Strength) of 1 Enemy in any lane (prioritizes Hunters).",
+        "Start of Combat: Reduce Intelligence by -36% (enhanced by Strength) of 1 Enemy in any lane (prioritizes Hunters).",
+        "Start of Combat: Reduce Intelligence by -42% (enhanced by Strength) of 1 Enemy in any lane (prioritizes Hunters).",
+        "Start of Combat: Reduce Intelligence by -51% (enhanced by Strength) of 1 Enemy in any lane (prioritizes Hunters).",
+        "Start of Combat: Reduce Intelligence by -60% (enhanced by Strength) of 1 Enemy in any lane (prioritizes Hunters).",
+      ] },
+    // 4★
+    { short: [
+        "Physical Dmg (Command & Habits) +12.5%",
+        "Physical Dmg (Command & Habits) +15%",
+        "Physical Dmg (Command & Habits) +17.5%",
+        "Physical Dmg (Command & Habits) +21.25%",
+        "Physical Dmg (Command & Habits) +25%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Physical Damage Dealt (Command & Habits) by +12.5% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage Dealt (Command & Habits) by +15% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage Dealt (Command & Habits) by +17.5% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage Dealt (Command & Habits) by +21.25% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage Dealt (Command & Habits) by +25% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command gains Physical Dmg (+20% or 40% w/ Double-Strike) to 1 Enemy (least troops) | Rounds 4,6,8,10: Double-Strike (40% chance)",
+        "Command gains Physical Dmg (+24% or 48% w/ Double-Strike) to 1 Enemy (least troops) | Rounds 4,6,8,10: Double-Strike (42% chance)",
+        "Command gains Physical Dmg (+28% or 56% w/ Double-Strike) to 1 Enemy (least troops) | Rounds 4,6,8,10: Double-Strike (44% chance)",
+        "Command gains Physical Dmg (+34% or 68% w/ Double-Strike) to 1 Enemy (least troops) | Rounds 4,6,8,10: Double-Strike (47% chance)",
+        "Command gains Physical Dmg (+40% or 80% w/ Double-Strike) to 1 Enemy (least troops) | Rounds 4,6,8,10: Double-Strike (50% chance)",
+      ],
+      desc: [
+        "Feral Strike gains: After each Basic Attack: Deal Physical Damage to the enemy with the least troops (Damage Rate: +20%). Rounds 4, 6, 8: The chance to gain Double-Strike is increased to 40%. Double-Strike grants the target a 2nd Basic Attack each round.",
+        "Feral Strike gains: After each Basic Attack: Deal Physical Damage to the enemy with the least troops (Damage Rate: +24%). Rounds 4, 6, 8: The chance to gain Double-Strike is increased to 42%. Double-Strike grants the target a 2nd Basic Attack each round.",
+        "Feral Strike gains: After each Basic Attack: Deal Physical Damage to the enemy with the least troops (Damage Rate: +28%). Rounds 4, 6, 8: The chance to gain Double-Strike is increased to 44%. Double-Strike grants the target a 2nd Basic Attack each round.",
+        "Feral Strike gains: After each Basic Attack: Deal Physical Damage to the enemy with the least troops (Damage Rate: +34%). Rounds 4, 6, 8: The chance to gain Double-Strike is increased to 47%. Double-Strike grants the target a 2nd Basic Attack each round.",
+        "Feral Strike gains: After each Basic Attack: Deal Physical Damage to the enemy with the least troops (Damage Rate: +40%). Rounds 4, 6, 8: The chance to gain Double-Strike is increased to 50%. Double-Strike grants the target a 2nd Basic Attack each round.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg Received +8% to 1 Enemy (opposing)",
+        "Physical Dmg Received +9.6% to 1 Enemy (opposing)",
+        "Physical Dmg Received +11.2% to 1 Enemy (opposing)",
+        "Physical Dmg Received +13.6% to 1 Enemy (opposing)",
+        "Physical Dmg Received +16% to 1 Enemy (opposing)",
+      ],
+      desc: [
+        "Start of Combat: Increase the Physical Damage Received by +8% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase the Physical Damage Received by +9.6% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase the Physical Damage Received by +11.2% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase the Physical Damage Received by +13.6% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase the Physical Damage Received by +16% of 1 opposing Enemy until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Command w/ <50% troops +60% Physical Dmg & Overwhelm 1 Enemy (Hunters/others) (12% chance) (2 rounds)",
+        "Command w/ <50% troops +78% Physical Dmg & Overwhelm 1 Enemy (Hunters/others) (15.6% chance) (2 rounds)",
+        "Command w/ <50% troops +96% Physical Dmg & Overwhelm 1 Enemy (Hunters/others) (19.2% chance) (2 rounds)",
+        "Command w/ <50% troops +120% Physical Dmg & Overwhelm 1 Enemy (Hunters/others) (24% chance) (2 rounds)",
+        "Command w/ <50% troops +150% Physical Dmg & Overwhelm 1 Enemy (Hunters/others) (30% chance) (2 rounds)",
+      ],
+      desc: [
+        "After each Basic Attack: Command gains if you are below 50% max troop capacity, deal Physical Damage to 1 Enemy in any lane (prioritizes Hunters) (Damage Rate: +60%). Additionally, there is a 12% chance to afflict the target with Overwhelm for 2 rounds.",
+        "After each Basic Attack: Command gains if you are below 50% max troop capacity, deal Physical Damage to 1 Enemy in any lane (prioritizes Hunters) (Damage Rate: +78%). Additionally, there is a 15.6% chance to afflict the target with Overwhelm for 2 rounds.",
+        "After each Basic Attack: Command gains if you are below 50% max troop capacity, deal Physical Damage to 1 Enemy in any lane (prioritizes Hunters) (Damage Rate: +96%). Additionally, there is a 19.2% chance to afflict the target with Overwhelm for 2 rounds.",
+        "After each Basic Attack: Command gains if you are below 50% max troop capacity, deal Physical Damage to 1 Enemy in any lane (prioritizes Hunters) (Damage Rate: +120%). Additionally, there is a 24% chance to afflict the target with Overwhelm for 2 rounds.",
+        "After each Basic Attack: Command gains if you are below 50% max troop capacity, deal Physical Damage to 1 Enemy in any lane (prioritizes Hunters) (Damage Rate: +150%). Additionally, there is a 30% chance to afflict the target with Overwhelm for 2 rounds.",
+      ] },
+  ],
+  Sheepstealer: [
+    // 2★
+    { short: [
+        "Fire Dmg +10% vs Food Tiles & Encounters vs Beasts | Fire Dmg +3% per-stack (Max 10) (50% chance) (each round) | Fire Dmg +3% per-stack (Max 10) (Prey receives Recovery).",
+        "Fire Dmg +12% vs Food Tiles & Encounters vs Beasts | Fire Dmg +3.6% per-stack (Max 10) (50% chance) (each round) | Fire Dmg +3.6% per-stack (Max 10) (Prey receives Recovery).",
+        "Fire Dmg +14% vs Food Tiles & Encounters vs Beasts | Fire Dmg +4.2% per-stack (Max 10) (50% chance) (each round) | Fire Dmg +4.2% per-stack (Max 10) (Prey receives Recovery).",
+        "Fire Dmg +17% vs Food Tiles & Encounters vs Beasts | Fire Dmg +5.1% per-stack (Max 10) (50% chance) (each round) | Fire Dmg +5.1% per-stack (Max 10) (Prey receives Recovery).",
+        "Fire Dmg +20% vs Food Tiles & Encounters vs Beasts | Fire Dmg +6% per-stack (Max 10) (50% chance) (each round) | Fire Dmg +6% per-stack (Max 10) (Prey receives Recovery).",
+      ],
+      desc: [
+        "Start of Combat: Increase your Fire Damage Dealt by +10% when battling non-player armies at Food Tiles and when battling Encounters against Beasts until the end of combat. Each Round: 50% chance to gain 1 stack of Stolen Flock (Max 10 Stacks). When your Prey receives Recovery: Gain 1 stack of Stolen Flock (Max 10 Stacks). Each stack of Stolen Flock increases your Fire Damage Dealt by +3% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +12% when battling non-player armies at Food Tiles and when battling Encounters against Beasts until the end of combat. Each Round: 50% chance to gain 1 stack of Stolen Flock (Max 10 Stacks). When your Prey receives Recovery: Gain 1 stack of Stolen Flock (Max 10 Stacks). Each stack of Stolen Flock increases your Fire Damage Dealt by +3.6% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +14% when battling non-player armies at Food Tiles and when battling Encounters against Beasts until the end of combat. Each Round: 50% chance to gain 1 stack of Stolen Flock (Max 10 Stacks). When your Prey receives Recovery: Gain 1 stack of Stolen Flock (Max 10 Stacks). Each stack of Stolen Flock increases your Fire Damage Dealt by +4.2% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +17% when battling non-player armies at Food Tiles and when battling Encounters against Beasts until the end of combat. Each Round: 50% chance to gain 1 stack of Stolen Flock (Max 10 Stacks). When your Prey receives Recovery: Gain 1 stack of Stolen Flock (Max 10 Stacks). Each stack of Stolen Flock increases your Fire Damage Dealt by +5.1% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +20% when battling non-player armies at Food Tiles and when battling Encounters against Beasts until the end of combat. Each Round: 50% chance to gain 1 stack of Stolen Flock (Max 10 Stacks). When your Prey receives Recovery: Gain 1 stack of Stolen Flock (Max 10 Stacks). Each stack of Stolen Flock increases your Fire Damage Dealt by +6% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Intelligence +16% | Instinct -12% of 2 Enemies adjacency",
+        "Intelligence +19.2% | Instinct -14.4% of 2 Enemies adjacency",
+        "Intelligence +22.4% | Instinct -16.8% of 2 Enemies adjacency",
+        "Intelligence +27.2% | Instinct -20.4% of 2 Enemies adjacency",
+        "Intelligence +32% | Instinct -24% of 2 Enemies adjacency",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence by +16% and reduce Instinct by -12% (enhanced by Initiative) of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +19.2% and reduce Instinct by -14.4% (enhanced by Initiative) of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +22.4% and reduce Instinct by -16.8% (enhanced by Initiative) of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +27.2% and reduce Instinct by -20.4% (enhanced by Initiative) of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +32% and reduce Instinct by -24% (enhanced by Initiative) of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Vulnerable (+20%) to Prey (25% or 50% chance w/ Prey received Recovery) | Cleanse 1 Negative if Prey >50% Troop (50% chance)",
+        "Vulnerable (+20%) to Prey (30% or 60% chance w/ Prey received Recovery) | Cleanse 1 Negative if Prey >50% Troop (60% chance)",
+        "Vulnerable (+20%) to Prey (35% or 70% chance w/ Prey received Recovery) | Cleanse 1 Negative if Prey >50% Troop (70% chance)",
+        "Vulnerable (+20%) to Prey (42.5% or 85% chance w/ Prey received Recovery) | Cleanse 1 Negative if Prey >50% Troop (85% chance)",
+        "Vulnerable (+20%) to Prey (50% or 100% chance w/ Prey received Recovery) | Cleanse 1 Negative if Prey >50% Troop (100% chance)",
+      ],
+      desc: [
+        "Each Round: 25% chance to afflict your Prey with Vulnerable (+20%). This chance is doubled (50%) if the target received Recovery within the last 1 round. Each Round: If your Prey is above 50% Troop Capacity, 50% chance to Cleanse yourself of 1 Negative Effect applied by an enemy that reduces your Damage Dealt.",
+        "Each Round: 30% chance to afflict your Prey with Vulnerable (+20%). This chance is doubled (60%) if the target received Recovery within the last 1 round. Each Round: If your Prey is above 50% Troop Capacity, 60% chance to Cleanse yourself of 1 Negative Effect applied by an enemy that reduces your Damage Dealt.",
+        "Each Round: 35% chance to afflict your Prey with Vulnerable (+20%). This chance is doubled (70%) if the target received Recovery within the last 1 round. Each Round: If your Prey is above 50% Troop Capacity, 70% chance to Cleanse yourself of 1 Negative Effect applied by an enemy that reduces your Damage Dealt.",
+        "Each Round: 42.5% chance to afflict your Prey with Vulnerable (+20%). This chance is doubled (85%) if the target received Recovery within the last 1 round. Each Round: If your Prey is above 50% Troop Capacity, 85% chance to Cleanse yourself of 1 Negative Effect applied by an enemy that reduces your Damage Dealt.",
+        "Each Round: 50% chance to afflict your Prey with Vulnerable (+20%). This chance is doubled (100%) if the target received Recovery within the last 1 round. Each Round: If your Prey is above 50% Troop Capacity, 100% chance to Cleanse yourself of 1 Negative Effect applied by an enemy that reduces your Damage Dealt.",
+      ] },
+    // 8★
+    { short: [
+        "Evade (10%) if Prey >50% Troop | Recovery -10% to 3 Enemies in any lane",
+        "Evade (12%) if Prey >50% Troop | Recovery -12% to 3 Enemies in any lane",
+        "Evade (14%) if Prey >50% Troop | Recovery -14% to 3 Enemies in any lane",
+        "Evade (17%) if Prey >50% Troop | Recovery -17% to 3 Enemies in any lane",
+        "Evade (20%) if Prey >50% Troop | Recovery -20% to 3 Enemies in any lane",
+      ],
+      desc: [
+        "Start of Each Round: If your Prey is above 50% Troop Capacity, gain Evade (10%) until the end of the round. Evade cause each instance of damage against the target to have a chance to be ignored. Start of Combat: Reduce the Recovery Received by -10% of 3 Enemies in any lane until the end of combat.",
+        "Start of Each Round: If your Prey is above 50% Troop Capacity, gain Evade (12%) until the end of the round. Evade cause each instance of damage against the target to have a chance to be ignored. Start of Combat: Reduce the Recovery Received by -12% of 3 Enemies in any lane until the end of combat.",
+        "Start of Each Round: If your Prey is above 50% Troop Capacity, gain Evade (14%) until the end of the round. Evade cause each instance of damage against the target to have a chance to be ignored. Start of Combat: Reduce the Recovery Received by -14% of 3 Enemies in any lane until the end of combat.",
+        "Start of Each Round: If your Prey is above 50% Troop Capacity, gain Evade (17%) until the end of the round. Evade cause each instance of damage against the target to have a chance to be ignored. Start of Combat: Reduce the Recovery Received by -17% of 3 Enemies in any lane until the end of combat.",
+        "Start of Each Round: If your Prey is above 50% Troop Capacity, gain Evade (20%) until the end of the round. Evade cause each instance of damage against the target to have a chance to be ignored. Start of Combat: Reduce the Recovery Received by -20% of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Fire Dmg (+24% or +72% w/ Prey received Recovery) | Recovery (+10% or +30% w/ Prey received Recovery)",
+        "Fire Dmg (+31.2% or +93.6% w/ Prey received Recovery) | Recovery (+12% or +39% w/ Prey received Recovery)",
+        "Fire Dmg (+38.4% or +115.2% w/ Prey received Recovery) | Recovery (+16% or +48% w/ Prey received Recovery)",
+        "Fire Dmg (+48% or +144% w/ Prey received Recovery) | Recovery (+20% or +60% w/ Prey received Recovery)",
+        "Fire Dmg (+60% or +180% w/ Prey received Recovery) | Recovery (+25% or +75% w/ Prey received Recovery)",
+      ],
+      desc: [
+        "Each Round: If you have a Prey, Deal Fire Damage to them (Damage Rate: +24%) and apply Recovery to yourself (Recovery Rate: +10%, enhanced by Intelligence). If your Prey received Recovery within the last round, triple the Damage (+72%) and Recovery (+30%).",
+        "Each Round: If you have a Prey, Deal Fire Damage to them (Damage Rate: +31.2%) and apply Recovery to yourself (Recovery Rate: +13%, enhanced by Intelligence). If your Prey received Recovery within the last round, triple the Damage (+93.6%) and Recovery (+39%).",
+        "Each Round: If you have a Prey, Deal Fire Damage to them (Damage Rate: +38.4%) and apply Recovery to yourself (Recovery Rate: +16%, enhanced by Intelligence). If your Prey received Recovery within the last round, triple the Damage (+115.2%) and Recovery (+48%).",
+        "Each Round: If you have a Prey, Deal Fire Damage to them (Damage Rate: +48%) and apply Recovery to yourself (Recovery Rate: +20%, enhanced by Intelligence). If your Prey received Recovery within the last round, triple the Damage (+144%) and Recovery (+60%).",
+        "Each Round: If you have a Prey, Deal Fire Damage to them (Damage Rate: +60%) and apply Recovery to yourself (Recovery Rate: +25%, enhanced by Intelligence). If your Prey received Recovery within the last round, triple the Damage (+180%) and Recovery (+75%).",
+      ] },
+  ],
+  Sunfyre: [
+    // 2★
+    { short: [
+        "Dmg Dealt +5% to Ally w/ most troops, if <75% troop to 2 Allies, if <50% troop to all (each round)",
+        "Dmg Dealt +6% to Ally w/ most troops, if <75% troop to 2 Allies, if <50% troop to all (each round)",
+        "Dmg Dealt +7% to Ally w/ most troops, if <75% troop to 2 Allies, if <50% troop to all (each round)",
+        "Dmg Dealt +8.5% to Ally w/ most troops, if <75% troop to 2 Allies, if <50% troop to all (each round)",
+        "Dmg Dealt +10% to Ally w/ most troops, if <75% troop to 2 Allies, if <50% troop to all (each round)",
+      ],
+      desc: [
+        "Start of Each Round: Increase the Damage Dealt by +5% of the other ally with the most troops until the end of the round. If you are below 75% Troop Capacity, apply this effect to both other allies instead. If you are below 50% Troop Capacity, also apply this effect to yourself.",
+        "Start of Each Round: Increase the Damage Dealt by +6% of the other ally with the most troops until the end of the round. If you are below 75% Troop Capacity, apply this effect to both other allies instead. If you are below 50% Troop Capacity, also apply this effect to yourself.",
+        "Start of Each Round: Increase the Damage Dealt by +7% of the other ally with the most troops until the end of the round. If you are below 75% Troop Capacity, apply this effect to both other allies instead. If you are below 50% Troop Capacity, also apply this effect to yourself.",
+        "Start of Each Round: Increase the Damage Dealt by +8.5% of the other ally with the most troops until the end of the round. If you are below 75% Troop Capacity, apply this effect to both other allies instead. If you are below 50% Troop Capacity, also apply this effect to yourself.",
+        "Start of Each Round: Increase the Damage Dealt by +10% of the other ally with the most troops until the end of the round. If you are below 75% Troop Capacity, apply this effect to both other allies instead. If you are below 50% Troop Capacity, also apply this effect to yourself.",
+      ] },
+    // 4★
+    { short: [
+        "Fire Dmg -13.5% to 1 Enemy w/ Fire Dmg",
+        "Fire Dmg -16.2% to 1 Enemy w/ Fire Dmg",
+        "Fire Dmg -18.9% to 1 Enemy w/ Fire Dmg",
+        "Fire Dmg -22.95% to 1 Enemy w/ Fire Dmg",
+        "Fire Dmg -27% to 1 Enemy w/ Fire Dmg",
+      ],
+      desc: [
+        "Start of Combat: Reduce Fire Damage Dealt by -13.5% of 1 Enemy that deals Fire Damage until the end of combat.",
+        "Start of Combat: Reduce Fire Damage Dealt by -16.2% of 1 Enemy that deals Fire Damage until the end of combat.",
+        "Start of Combat: Reduce Fire Damage Dealt by -18.9% of 1 Enemy that deals Fire Damage until the end of combat.",
+        "Start of Combat: Reduce Fire Damage Dealt by -22.95% of 1 Enemy that deals Fire Damage until the end of combat.",
+        "Start of Combat: Reduce Fire Damage Dealt by -27% of 1 Enemy that deals Fire Damage until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Tactical Dmg +50% to 1 Enemy w/ Fire Dmg | Intelligence -15% (2 rounds)",
+        "Tactical Dmg +60% to 1 Enemy w/ Fire Dmg | Intelligence -18% (2 rounds)",
+        "Tactical Dmg +70% to 1 Enemy w/ Fire Dmg | Intelligence -21% (2 rounds)",
+        "Tactical Dmg +85% to 1 Enemy w/ Fire Dmg | Intelligence -25.5% (2 rounds)",
+        "Tactical Dmg +100% to 1 Enemy w/ Fire Dmg | Intelligence -30% (2 rounds)",
+      ],
+      desc: [
+        "Each Round: The first time any ally receives Fire Damage, deal Tactical Damage to enemy that deals Fire Damage (Damage Rate: +50%). Additionally, reduce the target’s Intelligence by -15% (enhanced by Instinct) for 2 round(s). This effect can only trigger once per round.",
+        "Each Round: The first time any ally receives Fire Damage, deal Tactical Damage to enemy that deals Fire Damage (Damage Rate: +60%). Additionally, reduce the target’s Intelligence by -18% (enhanced by Instinct) for 2 round(s). This effect can only trigger once per round.",
+        "Each Round: The first time any ally receives Fire Damage, deal Tactical Damage to enemy that deals Fire Damage (Damage Rate: +70%). Additionally, reduce the target’s Intelligence by -21% (enhanced by Instinct) for 2 round(s). This effect can only trigger once per round.",
+        "Each Round: The first time any ally receives Fire Damage, deal Tactical Damage to enemy that deals Fire Damage (Damage Rate: +85%). Additionally, reduce the target’s Intelligence by -25.5% (enhanced by Instinct) for 2 round(s). This effect can only trigger once per round.",
+        "Each Round: The first time any ally receives Fire Damage, deal Tactical Damage to enemy that deals Fire Damage (Damage Rate: +100%). Additionally, reduce the target’s Intelligence by -30% (enhanced by Instinct) for 2 round(s). This effect can only trigger once per round.",
+      ] },
+    // 8★
+    { short: [
+        "Fire Dmg Received -7.5% | All Dmg Received -7.5% if <50% troop | Cleanse 1 Negative effect (prioritizes Vulnerable) (25% chance) (each round)",
+        "Fire Dmg Received -9% | All Dmg Received -9% if <50% troop | Cleanse 1 Negative effect (prioritizes Vulnerable) (30% chance) (each round)",
+        "Fire Dmg Received -10.5% | All Dmg Received -10.5 if <50% troop | Cleanse 1 Negative effect (prioritizes Vulnerable) (35% chance) (each round)",
+        "Fire Dmg Received -12.75% | All Dmg Received -12.5% if <50% troop | Cleanse 1 Negative effect (prioritizes Vulnerable) (42.5% chance) (each round)",
+        "Fire Dmg Received -15% | All Dmg Received -15% if <50% troop | Cleanse 1 Negative effect (prioritizes Vulnerable) (50% chance) (each round)",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Fire Damage Received by -7.5% until the end of combat. Start of Each Round: If you are below 50% troop capacity, reduce your Damage Received -7.5% until the end of the round. Additionally, there is a 25% chance to Cleanse 1 Negative effect that increases your Damage Received (prioritizes the Vulnerable condition).",
+        "Start of Combat: Reduce your Fire Damage Received by -9% until the end of combat. Start of Each Round: If you are below 50% troop capacity, reduce your Damage Received -9% until the end of the round. Additionally, there is a 30% chance to Cleanse 1 Negative effect that increases your Damage Received (prioritizes the Vulnerable condition).",
+        "Start of Combat: Reduce your Fire Damage Received by -10.5% until the end of combat. Start of Each Round: If you are below 50% troop capacity, reduce your Damage Received -10.5% until the end of the round. Additionally, there is a 35% chance to Cleanse 1 Negative effect that increases your Damage Received (prioritizes the Vulnerable condition).",
+        "Start of Combat: Reduce your Fire Damage Received by -12.75% until the end of combat. Start of Each Round: If you are below 50% troop capacity, reduce your Damage Received -12.75% until the end of the round. Additionally, there is a 42.5% chance to Cleanse 1 Negative effect that increases your Damage Received (prioritizes the Vulnerable condition).",
+        "Start of Combat: Reduce your Fire Damage Received by -15% until the end of combat. Start of Each Round: If you are below 50% troop capacity, reduce your Damage Received -15% until the end of the round. Additionally, there is a 50% chance to Cleanse 1 Negative effect that increases your Damage Received (prioritizes the Vulnerable condition).",
+      ] },
+    // 10★
+    { short: [
+        "Recovery +30% (if taken Fire Dmg) | Dmg Dealt +12% to Ally w/ most troops (if taken Tactical Dmg) | Dmg Dealt -12% to Enemy w/ most troops (if taken Physical Dmg) | Instinct +12%, Initiative +6% (if taken Basic Attack)",
+        "Recovery +30% (if taken Fire Dmg) | Dmg Dealt +12% to Ally w/ most troops (if taken Tactical Dmg) | Dmg Dealt -12% to Enemy w/ most troops (if taken Physical Dmg) | Instinct +12%, Initiative +6% (if taken Basic Attack)",
+        "Recovery +30% (if taken Fire Dmg) | Dmg Dealt +12% to Ally w/ most troops (if taken Tactical Dmg) | Dmg Dealt -12% to Enemy w/ most troops (if taken Physical Dmg) | Instinct +12%, Initiative +6% (if taken Basic Attack)",
+        "Recovery +30% (if taken Fire Dmg) | Dmg Dealt +12% to Ally w/ most troops (if taken Tactical Dmg) | Dmg Dealt -12% to Enemy w/ most troops (if taken Physical Dmg) | Instinct +12%, Initiative +6% (if taken Basic Attack)",
+        "Recovery +30% (if taken Fire Dmg) | Dmg Dealt +12% to Ally w/ most troops (if taken Tactical Dmg) | Dmg Dealt -12% to Enemy w/ most troops (if taken Physical Dmg) | Instinct +12%, Initiative +6% (if taken Basic Attack)",
+      ],
+      desc: [
+        "Each Round: The first time you Receive Damage, activate one of the following effects based on the type of damage received. Fire Damage: Apply Recovery to yourself (Recovery Rate: +30%) enhanced by Instinct). Tactical Damage: Increase the Damage Dealt of the Ally with the most troops by +12% for 1 round(s). Physical Damage (excluding Basic Attacks): Reduce the Damage Dealt of the Enemy with the most troops by -12% for 1 round(s). Basic Attack: Increase your Instinct by +12% and Initiative by +6% for 1 round(s).",
+        "Each Round: The first time you Receive Damage, activate one of the following effects based on the type of damage received. Fire Damage: Apply Recovery to yourself (Recovery Rate: +39%) enhanced by Instinct). Tactical Damage: Increase the Damage Dealt of the Ally with the most troops by +15.6% for 1 round(s). Physical Damage (excluding Basic Attacks): Reduce the Damage Dealt of the Enemy with the most troops by -15.6% for 1 round(s). Basic Attack: Increase your Instinct by +15.6% and Initiative by +7.8% for 1 round(s).",
+        "Each Round: The first time you Receive Damage, activate one of the following effects based on the type of damage received. Fire Damage: Apply Recovery to yourself (Recovery Rate: +48%) enhanced by Instinct). Tactical Damage: Increase the Damage Dealt of the Ally with the most troops by +19.2% for 1 round(s). Physical Damage (excluding Basic Attacks): Reduce the Damage Dealt of the Enemy with the most troops by -19.2% for 1 round(s). Basic Attack: Increase your Instinct by +19.2% and Initiative by +9.6% for 1 round(s).",
+        "Each Round: The first time you Receive Damage, activate one of the following effects based on the type of damage received. Fire Damage: Apply Recovery to yourself (Recovery Rate: +60%) enhanced by Instinct). Tactical Damage: Increase the Damage Dealt of the Ally with the most troops by +24% for 1 round(s). Physical Damage (excluding Basic Attacks): Reduce the Damage Dealt of the Enemy with the most troops by -24% for 1 round(s). Basic Attack: Increase your Instinct by +24% and Initiative by +12% for 1 round(s).",
+        "Each Round: The first time you Receive Damage, activate one of the following effects based on the type of damage received. Fire Damage: Apply Recovery to yourself (Recovery Rate: +75%) enhanced by Instinct). Tactical Damage: Increase the Damage Dealt of the Ally with the most troops by +30% for 1 round(s). Physical Damage (excluding Basic Attacks): Reduce the Damage Dealt of the Enemy with the most troops by -30% for 1 round(s). Basic Attack: Increase your Instinct by +30% and Initiative by +15% for 1 round(s).",
+      ] },
+  ],
+  Vermithor: [
+    // 2★
+    { short: [
+        "Tactical Dmg Received +20%, Physical Dmg Enemy -13% (Warrior), Fire Dmg Enemy -13% (Hunter) (5 rounds)",
+        "Tactical Dmg Received +16%, Physical Dmg Enemy -13.4% (Warrior), Fire Dmg Enemy -13.4% (Hunter) (5 rounds)",
+        "Tactical Dmg Received +12%, Physical Dmg Enemy -13.8% (Warrior), Fire Dmg Enemy -13.8% (Hunter) (5 rounds)",
+        "Tactical Dmg Received +6%, Physical Dmg Enemy -14.4% (Warrior), Fire Dmg Enemy -14.4% (Hunter) (5 rounds)",
+        "Tactical Dmg Received +0%, Physical Dmg Enemy -15% (Warrior), Fire Dmg Enemy -15% (Hunter) (5 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase your Tactical Damage Received by +20% for 5 round(s). Additionally, reduce the Physical Damage Dealt of 1 Enemy in any lane (prioritizing Warriors) and the Fire Damage Dealt of 1 Enemy in any lane (prioritizing Hunters). Each effect reduces Damage Dealt by -13% and lasts for 5 round(s).",
+        "Start of Round 1: Increase your Tactical Damage Received by +16% for 5 round(s). Additionally, reduce the Physical Damage Dealt of 1 Enemy in any lane (prioritizing Warriors) and the Fire Damage Dealt of 1 Enemy in any lane (prioritizing Hunters). Each effect reduces Damage Dealt by -13.4% and lasts for 5 round(s).",
+        "Start of Round 1: Increase your Tactical Damage Received by +12% for 5 round(s). Additionally, reduce the Physical Damage Dealt of 1 Enemy in any lane (prioritizing Warriors) and the Fire Damage Dealt of 1 Enemy in any lane (prioritizing Hunters). Each effect reduces Damage Dealt by -13.8% and lasts for 5 round(s).",
+        "Start of Round 1: Increase your Tactical Damage Received by +6% for 5 round(s). Additionally, reduce the Physical Damage Dealt of 1 Enemy in any lane (prioritizing Warriors) and the Fire Damage Dealt of 1 Enemy in any lane (prioritizing Hunters). Each effect reduces Damage Dealt by -14.4% and lasts for 5 round(s).",
+        "Start of Round 1: Increase your Tactical Damage Received by +0% for 5 round(s). Additionally, reduce the Physical Damage Dealt of 1 Enemy in any lane (prioritizing Warriors) and the Fire Damage Dealt of 1 Enemy in any lane (prioritizing Hunters). Each effect reduces Damage Dealt by -15% and lasts for 5 round(s).",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Received -6% | Initiative +12%",
+        "Dmg Received -7.2% | Initiative +14.4%",
+        "Dmg Received -8.4% | Initiative +16.8%",
+        "Dmg Received -10.2% | Initiative +20.4%",
+        "Dmg Received -12% | Initiative +24%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Initiative by +12% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7.2% and increase your Initiative by +14.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.4% and increase your Initiative by +16.8% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10.2% and increase your Initiative by +20.4% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -12% and increase your Initiative by +24% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command gains Physical Dmg +37.5%, Tactical Dmg +75% | Protect (40% chance) | Dmg Received -5% (2 rounds) w/ Protect",
+        "Command gains Physical Dmg +39%, Tactical Dmg +78% | Protect (42% chance) | Dmg Received -6% (2 rounds) w/ Protect",
+        "Command gains Physical Dmg +40.5%, Tactical Dmg +81% | Protect (44% chance) | Dmg Received -7% (2 rounds) w/ Protect",
+        "Command gains Physical Dmg +42.75%, Tactical Dmg +85.5% | Protect (47% chance) | Dmg Received -8.5% (2 rounds) w/ Protect",
+        "Command gains Physical Dmg +45%, Tactical Dmg +90% | Protect (50% chance) | Dmg Received -10% (2 rounds) w/ Protect",
+      ],
+      desc: [
+        "Bronze Fury gains: Increase the amount of Physical Damage dealt to +37.5% and the Tactical Damage dealt to +75%. Increase the chance to apply Protect to 40%. Additionally, when you apply Protect, reduce your Physical and Fire Damage Received by -5% for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+        "Bronze Fury gains: Increase the amount of Physical Damage dealt to +39% and the Tactical Damage dealt to +78%. Increase the chance to apply Protect to 42%. Additionally, when you apply Protect, reduce your Physical and Fire Damage Received by -6% for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+        "Bronze Fury gains: Increase the amount of Physical Damage dealt to +40.5% and the Tactical Damage dealt to +81%. Increase the chance to apply Protect to 44%. Additionally, when you apply Protect, reduce your Physical and Fire Damage Received by -7% for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+        "Bronze Fury gains: Increase the amount of Physical Damage dealt to +42.75% and the Tactical Damage dealt to +85.5%. Increase the chance to apply Protect to 47%. Additionally, when you apply Protect, reduce your Physical and Fire Damage Received by -8.5% for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+        "Bronze Fury gains: Increase the amount of Physical Damage dealt to +45% and the Tactical Damage dealt to +90%. Increase the chance to apply Protect to 50%. Additionally, when you apply Protect, reduce your Physical and Fire Damage Received by -10% for 2 round(s). Protect causes damage dealt to the target by Commands and Habits to be split between them and the dragon that applied Protect.",
+      ] },
+    // 8★
+    { short: [
+        "Reduce Physical Dmg -7.5% to enemy Warriors | Reduce Fire Dmg -7.5% to enemy Hunters",
+        "Reduce Physical Dmg -9% to enemy Warriors | Reduce Fire Dmg -9% to enemy Hunters",
+        "Reduce Physical Dmg -10.5% to enemy Warriors | Reduce Fire Dmg -10.5% to enemy Hunters",
+        "Reduce Physical Dmg -12.7% to enemy Warriors | Reduce Fire Dmg -12.7% to enemy Hunters",
+        "Reduce Physical Dmg -15% to enemy Warriors | Reduce Fire Dmg -15% to enemy Hunters",
+      ],
+      desc: [
+        "Start of Combat: For each Warrior in the enemy army, reduce your Physical Damage Received by -7.5%. For each Hunter in the enemy army, reduce your Fire Damage Received by -7.5%. Each effect lasts until the end of combat.",
+        "Start of Combat: For each Warrior in the enemy army, reduce your Physical Damage Received by -9%. For each Hunter in the enemy army, reduce your Fire Damage Received by -9%. Each effect lasts until the end of combat.",
+        "Start of Combat: For each Warrior in the enemy army, reduce your Physical Damage Received by -10.5%. For each Hunter in the enemy army, reduce your Fire Damage Received by -10.5%. Each effect lasts until the end of combat.",
+        "Start of Combat: For each Warrior in the enemy army, reduce your Physical Damage Received by -12.75%. For each Hunter in the enemy army, reduce your Fire Damage Received by -12.75%. Each effect lasts until the end of combat.",
+        "Start of Combat: For each Warrior in the enemy army, reduce your Physical Damage Received by -15%. For each Hunter in the enemy army, reduce your Fire Damage Received by -15%. Each effect lasts until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg +60% to enemy (lowest Instinct) | Tactical Dmg +100% to enemy (lowest Intelligence) if <50% troop capacity",
+        "Physical Dmg +78% to enemy (lowest Instinct) | Tactical Dmg +130% to enemy (lowest Intelligence) if <50% troop capacity",
+        "Physical Dmg +96% to enemy (lowest Instinct) | Tactical Dmg +160% to enemy (lowest Intelligence) if <50% troop capacity",
+        "Physical Dmg +120% to enemy (lowest Instinct) | Tactical Dmg +200% to enemy (lowest Intelligence) if <50% troop capacity",
+        "Physical Dmg +150% to enemy (lowest Instinct) | Tactical Dmg +250% to enemy (lowest Intelligence) if <50% troop capacity",
+      ],
+      desc: [
+        "Each Round: If you are below 50% Max Troop Capacity, deal Physical Damage (Damage Rate: +60%) to the enemy with the lowest Instinct and deal Tactical Damage (Damage Rate: +100%) to the enemy with the lowest Intelligence. This effect only triggers once per combat.",
+        "Each Round: If you are below 50% Max Troop Capacity, deal Physical Damage (Damage Rate: +78%) to the enemy with the lowest Instinct and deal Tactical Damage (Damage Rate: +130%) to the enemy with the lowest Intelligence. This effect only triggers once per combat.",
+        "Each Round: If you are below 50% Max Troop Capacity, deal Physical Damage (Damage Rate: +96%) to the enemy with the lowest Instinct and deal Tactical Damage (Damage Rate: +160%) to the enemy with the lowest Intelligence. This effect only triggers once per combat.",
+        "Each Round: If you are below 50% Max Troop Capacity, deal Physical Damage (Damage Rate: +120%) to the enemy with the lowest Instinct and deal Tactical Damage (Damage Rate: +200%) to the enemy with the lowest Intelligence. This effect only triggers once per combat.",
+        "Each Round: If you are below 50% Max Troop Capacity, deal Physical Damage (Damage Rate: +150%) to the enemy with the lowest Instinct and deal Tactical Damage (Damage Rate: +250%) to the enemy with the lowest Intelligence. This effect only triggers once per combat.",
+      ] },
+  ],
+  Moondancer: [
+    // 2★
+    { short: [
+        "Rising Tide +1 stack (25%, 50% w/ Advantage) (rounds 1,3,5) | Instinct +9% & Tactical Dmg +6% to 1 Ally Sentinel (2 rounds), 1.5x at 4+ stacks",
+        "Rising Tide +1 stack (30%, 60% w/ Advantage) (rounds 1,3,5) | Instinct +10.8% & Tactical Dmg +7.2% to 1 Ally Sentinel (2 rounds), 1.5x at 4+ stacks",
+        "Rising Tide +1 stack (35%, 70% w/ Advantage) (rounds 1,3,5) | Instinct +12.6% & Tactical Dmg +8.4% to 1 Ally Sentinel (2 rounds), 1.5x at 4+ stacks",
+        "Rising Tide +1 stack (42.5%, 85% w/ Advantage) (rounds 1,3,5) | Instinct +15.3% & Tactical Dmg +10.2% to 1 Ally Sentinel (2 rounds), 1.5x at 4+ stacks",
+        "Rising Tide +1 stack (50%, 100% w/ Advantage) (rounds 1,3,5) | Instinct +18% & Tactical Dmg +12% to 1 Ally Sentinel (2 rounds), 1.5x at 4+ stacks",
+      ],
+      desc: [
+        "Rounds 1,3,5: 25% chance to gain 1 stack of Rising Tide. Double this chance (50%) if any Ally has Advantage. Odd-numbered Rounds: Increase the Instinct (enhanced by Initiative) by +9% and the Tactical Damage Dealt by +6% of 1 other Ally Sentinel for 2 round(s). If you have 4+ stacks of Rising Tide, increase these effects by 1.5x (+13.5% Instinct and +9% Tactical Damage Dealt).",
+        "Rounds 1,3,5: 30% chance to gain 1 stack of Rising Tide. Double this chance (60%) if any Ally has Advantage. Odd-numbered Rounds: Increase the Instinct (enhanced by Initiative) by +10.8% and the Tactical Damage Dealt by +7.2% of 1 other Ally Sentinel for 2 round(s). If you have 4+ stacks of Rising Tide, increase these effects by 1.5x (+16.2% Instinct and +10.8% Tactical Damage Dealt).",
+        "Rounds 1,3,5: 35% chance to gain 1 stack of Rising Tide. Double this chance (70%) if any Ally has Advantage. Odd-numbered Rounds: Increase the Instinct (enhanced by Initiative) by +12.6% and the Tactical Damage Dealt by +8.4% of 1 other Ally Sentinel for 2 round(s). If you have 4+ stacks of Rising Tide, increase these effects by 1.5x (+18.9% Instinct and +12.6% Tactical Damage Dealt).",
+        "Rounds 1,3,5: 42.5% chance to gain 1 stack of Rising Tide. Double this chance (85%) if any Ally has Advantage. Odd-numbered Rounds: Increase the Instinct (enhanced by Initiative) by +15.3% and the Tactical Damage Dealt by +10.2% of 1 other Ally Sentinel for 2 round(s). If you have 4+ stacks of Rising Tide, increase these effects by 1.5x (+22.95% Instinct and +15.3% Tactical Damage Dealt).",
+        "Rounds 1,3,5: 50% chance to gain 1 stack of Rising Tide. Double this chance (100%) if any Ally has Advantage. Odd-numbered Rounds: Increase the Instinct (enhanced by Initiative) by +18% and the Tactical Damage Dealt by +12% of 1 other Ally Sentinel for 2 round(s). If you have 4+ stacks of Rising Tide, increase these effects by 1.5x (+27% Instinct and +18% Tactical Damage Dealt).",
+      ] },
+    // 4★
+    { short: [
+        "Instinct +22% & Initiative +11% to the Ally with the highest Instinct",
+        "Instinct +26.4% & Initiative +13.2% to the Ally with the highest Instinct",
+        "Instinct +30.8% & Initiative +15.4% to the Ally with the highest Instinct",
+        "Instinct +37.4% & Initiative +18.7% to the Ally with the highest Instinct",
+        "Instinct +44% & Initiative +22% to the Ally with the highest Instinct",
+      ],
+      desc: [
+        "Start of Combat: Increase Instinct by +22% and Initiative by +11% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +26.4% and Initiative by +13.2% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +30.8% and Initiative by +15.4% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +37.4% and Initiative by +18.7% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +44% and Initiative by +22% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+      ] },
+    // 6★
+    { short: [
+        "Command Physical Dmg +85% (+170% at 4+ Rising Tide) | Rising Tide +1 stack (25%, 50% w/ Advantage, +1 if fewest troops) (rounds 6,8,10)",
+        "Command Physical Dmg +92% (+184% at 4+ Rising Tide) | Rising Tide +1 stack (30%, 60% w/ Advantage, +1 if fewest troops) (rounds 6,8,10)",
+        "Command Physical Dmg +99% (+198% at 4+ Rising Tide) | Rising Tide +1 stack (35%, 70% w/ Advantage, +1 if fewest troops) (rounds 6,8,10)",
+        "Command Physical Dmg +109.5% (+219% at 4+ Rising Tide) | Rising Tide +1 stack (42.5%, 85% w/ Advantage, +1 if fewest troops) (rounds 6,8,10)",
+        "Command Physical Dmg +120% (+240% at 4+ Rising Tide) | Rising Tide +1 stack (50%, 100% w/ Advantage, +1 if fewest troops) (rounds 6,8,10)",
+      ],
+      desc: [
+        "Rounds 6,8,10: 25% chance to gain 1 stack of Rising Tide. Double this chance (50%) if any Ally has Advantage. Additionally, gain 1 stack if you have the least troops of all combatants. Crescent Blade gains: Increase the Physical Damage dealt to +85%. Additionally, double this damage (+170%) when you have 4+ stacks of Rising Tide.",
+        "Rounds 6,8,10: 30% chance to gain 1 stack of Rising Tide. Double this chance (60%) if any Ally has Advantage. Additionally, gain 1 stack if you have the least troops of all combatants. Crescent Blade gains: Increase the Physical Damage dealt to +92%. Additionally, double this damage (+184%) when you have 4+ stacks of Rising Tide.",
+        "Rounds 6,8,10: 35% chance to gain 1 stack of Rising Tide. Double this chance (70%) if any Ally has Advantage. Additionally, gain 1 stack if you have the least troops of all combatants. Crescent Blade gains: Increase the Physical Damage dealt to +99%. Additionally, double this damage (+198%) when you have 4+ stacks of Rising Tide.",
+        "Rounds 6,8,10: 42.5% chance to gain 1 stack of Rising Tide. Double this chance (85%) if any Ally has Advantage. Additionally, gain 1 stack if you have the least troops of all combatants. Crescent Blade gains: Increase the Physical Damage dealt to +109.5%. Additionally, double this damage (+219%) when you have 4+ stacks of Rising Tide.",
+        "Rounds 6,8,10: 50% chance to gain 1 stack of Rising Tide. Double this chance (100%) if any Ally has Advantage. Additionally, gain 1 stack if you have the least troops of all combatants. Crescent Blade gains: Increase the Physical Damage dealt to +120%. Additionally, double this damage (+240%) when you have 4+ stacks of Rising Tide.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg Dealt +12.5% at 4+ Rising Tide | Bleed on 2 Enemies (adjacency) (25%, 50% at 6+ stacks) (2 rounds)",
+        "Physical Dmg Dealt +15% at 4+ Rising Tide | Bleed on 2 Enemies (adjacency) (30%, 60% at 6+ stacks) (2 rounds)",
+        "Physical Dmg Dealt +17.5% at 4+ Rising Tide | Bleed on 2 Enemies (adjacency) (35%, 70% at 6+ stacks) (2 rounds)",
+        "Physical Dmg Dealt +21.25% at 4+ Rising Tide | Bleed on 2 Enemies (adjacency) (42.5%, 85% at 6+ stacks) (2 rounds)",
+        "Physical Dmg Dealt +25% at 4+ Rising Tide | Bleed on 2 Enemies (adjacency) (50%, 100% at 6+ stacks) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: If you have 4+ stacks of Rising Tide, increase your Physical Damage Dealt by +12.5% until the end of the round. Odd-numbered Rounds: 25% chance to afflict Bleed on 2 Enemies within adjacency for 2 round(s). Double this chance (50%) if you have 6+ stacks of Rising Tide.",
+        "Each Round: If you have 4+ stacks of Rising Tide, increase your Physical Damage Dealt by +15% until the end of the round. Odd-numbered Rounds: 30% chance to afflict Bleed on 2 Enemies within adjacency for 2 round(s). Double this chance (60%) if you have 6+ stacks of Rising Tide.",
+        "Each Round: If you have 4+ stacks of Rising Tide, increase your Physical Damage Dealt by +17.5% until the end of the round. Odd-numbered Rounds: 35% chance to afflict Bleed on 2 Enemies within adjacency for 2 round(s). Double this chance (70%) if you have 6+ stacks of Rising Tide.",
+        "Each Round: If you have 4+ stacks of Rising Tide, increase your Physical Damage Dealt by +21.25% until the end of the round. Odd-numbered Rounds: 42.5% chance to afflict Bleed on 2 Enemies within adjacency for 2 round(s). Double this chance (85%) if you have 6+ stacks of Rising Tide.",
+        "Each Round: If you have 4+ stacks of Rising Tide, increase your Physical Damage Dealt by +25% until the end of the round. Odd-numbered Rounds: 50% chance to afflict Bleed on 2 Enemies within adjacency for 2 round(s). Double this chance (100%) if you have 6+ stacks of Rising Tide.",
+      ] },
+    // 10★
+    { short: [
+        "Damage Dealt -18% to Enemy (most troops) (20% chance) (2 rounds) | at 6+ Rising Tide: 40% chance & Initiative -25%",
+        "Damage Dealt -18% to Enemy (most troops) (26% chance) (2 rounds) | at 6+ Rising Tide: 52% chance & Initiative -25%",
+        "Damage Dealt -18% to Enemy (most troops) (32% chance) (2 rounds) | at 6+ Rising Tide: 64% chance & Initiative -25%",
+        "Damage Dealt -18% to Enemy (most troops) (40% chance) (2 rounds) | at 6+ Rising Tide: 80% chance & Initiative -25%",
+        "Damage Dealt -18% to Enemy (most troops) (50% chance) (2 rounds) | at 6+ Rising Tide: 100% chance & Initiative -25%",
+      ],
+      desc: [
+        "Each Round: 20% chance to reduce the Damage Dealt of the Enemy with the Most Troops by -18% for 2 round(s). If you have 6+ stacks of Rising Tide, double this chance (40%) and also reduce the target's Initiative by -25% (enhanced by Initiative).",
+        "Each Round: 26% chance to reduce the Damage Dealt of the Enemy with the Most Troops by -18% for 2 round(s). If you have 6+ stacks of Rising Tide, double this chance (52%) and also reduce the target's Initiative by -25% (enhanced by Initiative).",
+        "Each Round: 32% chance to reduce the Damage Dealt of the Enemy with the Most Troops by -18% for 2 round(s). If you have 6+ stacks of Rising Tide, double this chance (64%) and also reduce the target's Initiative by -25% (enhanced by Initiative).",
+        "Each Round: 40% chance to reduce the Damage Dealt of the Enemy with the Most Troops by -18% for 2 round(s). If you have 6+ stacks of Rising Tide, double this chance (80%) and also reduce the target's Initiative by -25% (enhanced by Initiative).",
+        "Each Round: 50% chance to reduce the Damage Dealt of the Enemy with the Most Troops by -18% for 2 round(s). If you have 6+ stacks of Rising Tide, double this chance (100%) and also reduce the target's Initiative by -25% (enhanced by Initiative).",
+      ] },
+  ],
+  // ---- Epic ----
+  Daemoros: [
+    // 2★
+    { short: [
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Right Flank/others) (25% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Right Flank/others) (30% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Right Flank/others) (35% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Right Flank/others) (42.5% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Right Flank/others) (50% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 25% chance to reduce Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemey in any lane (prioritizes the Right Flank). Each effect lasts 2 rounds.",
+        "Each Round: 30% chance to reduce Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemey in any lane (prioritizes the Right Flank). Each effect lasts 2 rounds.",
+        "Each Round: 35% chance to reduce Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemey in any lane (prioritizes the Right Flank). Each effect lasts 2 rounds.",
+        "Each Round: 42.5% chance to reduce Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemey in any lane (prioritizes the Right Flank). Each effect lasts 2 rounds.",
+        "Each Round: 50% chance to reduce Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemey in any lane (prioritizes the Right Flank). Each effect lasts 2 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Strength & Initiative +16%",
+        "Strength & Initiative +19.2%",
+        "Strength & Initiative +22.4%",
+        "Strength & Initiative +27.2%",
+        "Strength & Initiative +32%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Strength and Initiative by +16% until the end of combat.",
+        "Start of Combat: Increase your Strength and Initiative by +19.2% until the end of combat.",
+        "Start of Combat: Increase your Strength and Initiative by +22.4% until the end of combat.",
+        "Start of Combat: Increase your Strength and Initiative by +27.2% until the end of combat.",
+        "Start of Combat: Increase your Strength and Initiative by +32% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Confusion 1 Enemy adjacency (15% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (18% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (21% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (25.5% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (30% chance) (2 rounds)",
+      ],
+      desc: [
+        "Odd-numbered Rounds: 15% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Odd-numbered Rounds: 18% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Odd-numbered Rounds: 21% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Odd-numbered Rounds: 25.5% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Odd-numbered Rounds: 30% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Left Flank/others) (25% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Left Flank/others) (30% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Left Flank/others) (35% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Left Flank/others) (42.5% chance) (2 rounds)",
+        "Intelligence & Instinct -25% & Panic +20% to 1 Enemy (Left Flank/others) (50% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round 1: 25% chance to reduce the Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemy in any lane (prioritizes the Left Flank). Each effect lasts 2 rounds.",
+        "Each Round 1: 30% chance to reduce the Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemy in any lane (prioritizes the Left Flank). Each effect lasts 2 rounds.",
+        "Each Round 1: 35% chance to reduce the Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemy in any lane (prioritizes the Left Flank). Each effect lasts 2 rounds.",
+        "Each Round 1: 42.5% chance to reduce the Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemy in any lane (prioritizes the Left Flank). Each effect lasts 2 rounds.",
+        "Each Round 1: 50% chance to reduce the Intelligence and Instinct by -25% (enhanced by Strength) and afflict Panic (Damage Rate: +20%) on 1 Enemy in any lane (prioritizes the Left Flank). Each effect lasts 2 rounds.",
+      ] },
+    // 10★
+    { short: [
+        "Physical/Tactical/Fire Dmg Received -15%",
+        "Physical/Tactical/Fire Dmg Received -19.5%",
+        "Physical/Tactical/Fire Dmg Received -24%",
+        "Physical/Tactical/Fire Dmg Received -30%",
+        "Physical/Tactical/Fire Dmg Received -37.5%",
+      ],
+      desc: [
+        "Each Round: Reduce either your Physical, Tactical OR Fire Damage Received by -15% until the end of the round.",
+        "Each Round: Reduce either your Physical, Tactical OR Fire Damage Received by -19.5% until the end of the round.",
+        "Each Round: Reduce either your Physical, Tactical OR Fire Damage Received by -24% until the end of the round.",
+        "Each Round: Reduce either your Physical, Tactical OR Fire Damage Received by -30% until the end of the round.",
+        "Each Round: Reduce either your Physical, Tactical OR Fire Damage Received by -37.5% until the end of the round.",
+      ] },
+  ],
+  Feskar: [
+    // 2★
+    { short: [
+        "Physical Dmg Received (Command & Habits) -6.5% per-stack to yourself & 1 Ally adjacency (Doubled to you if Ally retreated)",
+        "Physical Dmg Received (Command & Habits) -7.8% per-stack to yourself & 1 Ally adjacency (Doubled to you if Ally retreated)",
+        "Physical Dmg Received (Command & Habits) -9.1% per-stack to yourself & 1 Ally adjacency (Doubled to you if Ally retreated)",
+        "Physical Dmg Received (Command & Habits) -11.05% per-stack to yourself & 1 Ally adjacency (Doubled to you if Ally retreated)",
+        "Physical Dmg Received (Command & Habits) -13% per-stack to yourself & 1 Ally adjacency (Doubled to you if Ally retreated)",
+      ],
+      desc: [
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Resilient Bond. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Resilient Bond. Each stack of Resilient Bond reduces the targets Physical Damage Received (Command & Habits) by -6.5% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Resilient Bond. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Resilient Bond. Each stack of Resilient Bond reduces the targets Physical Damage Received (Command & Habits) by -7.8% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Resilient Bond. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Resilient Bond. Each stack of Resilient Bond reduces the targets Physical Damage Received (Command & Habits) by -9.1% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Resilient Bond. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Resilient Bond. Each stack of Resilient Bond reduces the targets Physical Damage Received (Command & Habits) by -11.05% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Resilient Bond. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Resilient Bond. Each stack of Resilient Bond reduces the targets Physical Damage Received (Command & Habits) by -13% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Instinct +10% to 3 Allies",
+        "Instinct +12% to 3 Allies",
+        "Instinct +14% to 3 Allies",
+        "Instinct +17% to 3 Allies",
+        "Instinct +20% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Instinct by +10% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +12% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +14% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +17% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +20% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command Fire Dmg (+40% or +60% w/ Burn) to 3 Enemies w/ Physical Dmg",
+        "Command Fire Dmg (+48% or +72% w/ Burn) to 3 Enemies w/ Physical Dmg",
+        "Command Fire Dmg (+56% or +84% w/ Burn) to 3 Enemies w/ Physical Dmg",
+        "Command Fire Dmg (+68% or +102% w/ Burn) to 3 Enemies w/ Physical Dmg",
+        "Command Fire Dmg (+80% or +120% w/ Burn) to 3 Enemies w/ Physical Dmg",
+      ],
+      desc: [
+        "Rounds 3,5,8,10: Command deal Fire Damage to all Enemies that deal Physical Damage (Command & Habits) (Damage Rate: +40%). This damage is increased by 1.5x against targets afflicted with Burn (Damage Rate: +60%)",
+        "Rounds 3,5,8,10: Command deal Fire Damage to all Enemies that deal Physical Damage (Command & Habits) (Damage Rate: +48%). This damage is increased by 1.5x against targets afflicted with Burn (Damage Rate: +72%)",
+        "Rounds 3,5,8,10: Command deal Fire Damage to all Enemies that deal Physical Damage (Command & Habits) (Damage Rate: +56%). This damage is increased by 1.5x against targets afflicted with Burn (Damage Rate: +84%)",
+        "Rounds 3,5,8,10: Command deal Fire Damage to all Enemies that deal Physical Damage (Command & Habits) (Damage Rate: +68%). This damage is increased by 1.5x against targets afflicted with Burn (Damage Rate: +102%)",
+        "Rounds 3,5,8,10: Command deal Fire Damage to all Enemies that deal Physical Damage (Command & Habits) (Damage Rate: +80%). This damage is increased by 1.5x against targets afflicted with Burn (Damage Rate: +120%)",
+      ] },
+    // 8★
+    { short: [
+        "Intelligence & Initiative +16%",
+        "Intelligence & Initiative +19.2%",
+        "Intelligence & Initiative +22.4%",
+        "Intelligence & Initiative +27.2%",
+        "Intelligence & Initiative +32%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence and Initiative by +16% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +19.2% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +22.4% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +27.2% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +32% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Stagger 1 Enemy (Warriors/others) (10% chance) (3 rounds)",
+        "Stagger 1 Enemy (Warriors/others) (13% chance) (3 rounds)",
+        "Stagger 1 Enemy (Warriors/others) (16% chance) (3 rounds)",
+        "Stagger 1 Enemy (Warriors/others) (20% chance) (3 rounds)",
+        "Stagger 1 Enemy (Warriors/others) (25% chance) (3 rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to Stagger 1 Enemy in any lane (prioritizes warriors) for 3 rounds.",
+        "Each Round: 13% chance to Stagger 1 Enemy in any lane (prioritizes warriors) for 3 rounds.",
+        "Each Round: 16% chance to Stagger 1 Enemy in any lane (prioritizes warriors) for 3 rounds.",
+        "Each Round: 20% chance to Stagger 1 Enemy in any lane (prioritizes warriors) for 3 rounds.",
+        "Each Round: 25% chance to Stagger 1 Enemy in any lane (prioritizes warriors) for 3 rounds.",
+      ] },
+  ],
+  Rhysarion: [
+    // 2★
+    { short: [
+        "Dmg Dealt -27.5% ALL (3 rounds) | Recovery +25% to 3 Allies (Round 4+)",
+        "Dmg Dealt -33% ALL (3 rounds) | Recovery +30% to 3 Allies (Round 4+)",
+        "Dmg Dealt -38.5% ALL (3 rounds) | Recovery +35% to 3 Allies (Round 4+)",
+        "Dmg Dealt -46.75% ALL (3 rounds) | Recovery +42.5% to 3 Allies (Round 4+)",
+        "Dmg Dealt -55% ALL (3 rounds) | Recovery +50% to 3 Allies (Round 4+)",
+      ],
+      desc: [
+        "Start of Round 1: Reduce Damage Dealt of all Enemies AND Allies by -27.5% for 3 rounds. Start of Round 4: Apply Recovery (Recovery Rate: +25%, enhanced by Strength) to 3 Allies in any lane.",
+        "Start of Round 1: Reduce Damage Dealt of all Enemies AND Allies by -33% for 3 rounds. Start of Round 4: Apply Recovery (Recovery Rate: +30%, enhanced by Strength) to 3 Allies in any lane.",
+        "Start of Round 1: Reduce Damage Dealt of all Enemies AND Allies by -38.5% for 3 rounds. Start of Round 4: Apply Recovery (Recovery Rate: +35%, enhanced by Strength) to 3 Allies in any lane.",
+        "Start of Round 1: Reduce Damage Dealt of all Enemies AND Allies by -46.75% for 3 rounds. Start of Round 4: Apply Recovery (Recovery Rate: +42.5%, enhanced by Strength) to 3 Allies in any lane.",
+        "Start of Round 1: Reduce Damage Dealt of all Enemies AND Allies by -55% for 3 rounds. Start of Round 4: Apply Recovery (Recovery Rate: +50%, enhanced by Strength) to 3 Allies in any lane.",
+      ] },
+    // 4★
+    { short: [
+        "Strength & Intelligence +16%",
+        "Strength & Intelligence +19.2%",
+        "Strength & Intelligence +22.4%",
+        "Strength & Intelligence +27.2%",
+        "Strength & Intelligence +32%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Strength and Intelligence by +16% until the end of combat.",
+        "Start of Combat: Increase your Strength and Intelligence by +19.2% until the end of combat.",
+        "Start of Combat: Increase your Strength and Intelligence by +22.4% until the end of combat.",
+        "Start of Combat: Increase your Strength and Intelligence by +27.2% until the end of combat.",
+        "Start of Combat: Increase your Strength and Intelligence by +32% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command Recovery +60% to 2 Allies",
+        "Command Recovery +72% to 2 Allies",
+        "Command Recovery +84% to 2 Allies",
+        "Command Recovery +102% to 2 Allies",
+        "Command Recovery +120% to 2 Allies",
+      ],
+      desc: [
+        "Rounds 2,5,8: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +60%, enhanced by Intelligence).",
+        "Rounds 2,5,8: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +72%, enhanced by Intelligence).",
+        "Rounds 2,5,8: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +84%, enhanced by Intelligence).",
+        "Rounds 2,5,8: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +102%, enhanced by Intelligence).",
+        "Rounds 2,5,8: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +120%, enhanced by Intelligence).",
+      ] },
+    // 8★
+    { short: [
+        "Recovery Received +20% to 2 Allies",
+        "Recovery Received +24% to 2 Allies",
+        "Recovery Received +28% to 2 Allies",
+        "Recovery Received +34% to 2 Allies",
+        "Recovery Received +40% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Recovery Received by 20% of 2 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by 24% of 2 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by 28% of 2 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by 34% of 2 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by 40% of 2 Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Initiative +20% & Resistance (-15%) to 1 Ally adjacency (20% chance) (3 Rounds)",
+        "Initiative +20% & Resistance (-15%) to 1 Ally adjacency (26% chance) (3 Rounds)",
+        "Initiative +20% & Resistance (-15%) to 1 Ally adjacency (32% chance) (3 Rounds)",
+        "Initiative +20% & Resistance (-15%) to 1 Ally adjacency (40% chance) (3 Rounds)",
+        "Initiative +20% & Resistance (-15%) to 1 Ally adjacency (50% chance) (3 Rounds)",
+      ],
+      desc: [
+        "Each Round: 20% chance to increase Initiative by +20% (enhanced by Intelligence) and grant Resistance (-15%) to 1 other Ally within adjacency for 3 rounds.",
+        "Each Round: 26% chance to increase Initiative by +20% (enhanced by Intelligence) and grant Resistance (-15%) to 1 other Ally within adjacency for 3 rounds.",
+        "Each Round: 32% chance to increase Initiative by +20% (enhanced by Intelligence) and grant Resistance (-15%) to 1 other Ally within adjacency for 3 rounds.",
+        "Each Round: 40% chance to increase Initiative by +20% (enhanced by Intelligence) and grant Resistance (-15%) to 1 other Ally within adjacency for 3 rounds.",
+        "Each Round: 50% chance to increase Initiative by +20% (enhanced by Intelligence) and grant Resistance (-15%) to 1 other Ally within adjacency for 3 rounds.",
+      ] },
+  ],
+  Shadowsong: [
+    // 2★
+    { short: [
+        "Instinct & Initiative -18% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -21.6% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -25.2% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -30.6% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -36% to 2 Enemies adjacency (3 rounds)",
+      ],
+      desc: [
+        "Round 1: Reduce Instinct and Initiative by -18% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 rounds.",
+        "Round 1: Reduce Instinct and Initiative by -21.6% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 rounds.",
+        "Round 1: Reduce Instinct and Initiative by -25.2% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 rounds.",
+        "Round 1: Reduce Instinct and Initiative by -30.6% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 rounds.",
+        "Round 1: Reduce Instinct and Initiative by -36% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg (Command & Habits) Received to 1 Enemy +15% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg (Command & Habits) Received to 1 Enemy +18% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg (Command & Habits) Received to 1 Enemy +21% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg (Command & Habits) Received to 1 Enemy +25.5% (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg (Command & Habits) Received to 1 Enemy +30% (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage (Command & Habits) Received of 1 Enemy in any lane (prioritizes the Right Flank) by +15% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage (Command & Habits) Received of 1 Enemy in any lane (prioritizes the Right Flank) by +18% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage (Command & Habits) Received of 1 Enemy in any lane (prioritizes the Right Flank) by +21% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage (Command & Habits) Received of 1 Enemy in any lane (prioritizes the Right Flank) by +25.5% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage (Command & Habits) Received of 1 Enemy in any lane (prioritizes the Right Flank) by +30% for 3 rounds.",
+      ] },
+    // 6★
+    { short: [
+        "Vulnerable +15% to 2 Enemies adjacency (10% or +20% chance w/ Panic) (2 rounds)",
+        "Vulnerable +15% to 2 Enemies adjacency (12% or +24% chance w/ Panic) (2 rounds)",
+        "Vulnerable +15% to 2 Enemies adjacency (14% or +28% chance w/ Panic) (2 rounds)",
+        "Vulnerable +15% to 2 Enemies adjacency (17% or +34% chance w/ Panic) (2 rounds)",
+        "Vulnerable +15% to 2 Enemies adjacency (20% or +40% chance w/ Panic) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to afflict Vulnerable (+15%) on 2 Enemies within adjacency for 2 rounds. This chance is doubled (+20%) against targets afflicted with Panic.",
+        "Each Round: 12% chance to afflict Vulnerable (+15%) on 2 Enemies within adjacency for 2 rounds. This chance is doubled (+24%) against targets afflicted with Panic.",
+        "Each Round: 14% chance to afflict Vulnerable (+15%) on 2 Enemies within adjacency for 2 rounds. This chance is doubled (+28%) against targets afflicted with Panic.",
+        "Each Round: 17% chance to afflict Vulnerable (+15%) on 2 Enemies within adjacency for 2 rounds. This chance is doubled (+34%) against targets afflicted with Panic.",
+        "Each Round: 20% chance to afflict Vulnerable (+15%) on 2 Enemies within adjacency for 2 rounds. This chance is doubled (+40%) against targets afflicted with Panic.",
+      ] },
+    // 8★
+    { short: [
+        "Dmg Received -5% | Intelligence +8.5%",
+        "Dmg Received -6% | Intelligence +10.2%",
+        "Dmg Received -7% | Intelligence +11.9%",
+        "Dmg Received -8.5% | Intelligence +14.45%",
+        "Dmg Received -10% | Intelligence +17%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -5% and increase your Intelligence by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Intelligence by +10.2% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7% and increase your Intelligence by +11.9% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.5% and increase your Intelligence by +14.45% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10% and increase your Intelligence by +17% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Command Fire Dmg +60% to 1 Enemy & Burn (40% chance) (2 rounds) | Fire Dmg +30% to 2nd Enemy & Burn (20% chance)",
+        "Command Fire Dmg +78% to 1 Enemy & Burn (52% chance) (2 rounds) | Fire Dmg +39% to 2nd Enemy & Burn (26% chance)",
+        "Command Fire Dmg +96% to 1 Enemy & Burn (64% chance) (2 rounds) | Fire Dmg +48% to 2nd Enemy & Burn (32% chance)",
+        "Command Fire Dmg +120% to 1 Enemy & Burn (80% chance) (2 rounds) | Fire Dmg +60% to 2nd Enemy & Burn (40% chance)",
+        "Command Fire Dmg +150% to 1 Enemy & Burn (100% chance) (2 rounds) | Fire Dmg +75% to 2nd Enemy & Burn (50% chance)",
+      ],
+      desc: [
+        "Rounds 2,5,8: Command deal Fire Damage to 1 Enemy in any lane (Damage Rate: +60%) and there is a 40% chance to afflict the target with Burn for 2 rounds. Then deal Fire Damage to a different Enemy in any lane (Damage Rate: +30%) and there is a 20% chance to afflict the target with Burn for 2 rounds.",
+        "Rounds 2,5,8: Command deal Fire Damage to 1 Enemy in any lane (Damage Rate: +78%) and there is a 52% chance to afflict the target with Burn for 2 rounds. Then deal Fire Damage to a different Enemy in any lane (Damage Rate: +39%) and there is a 26% chance to afflict the target with Burn for 2 rounds.",
+        "Rounds 2,5,8: Command deal Fire Damage to 1 Enemy in any lane (Damage Rate: +96%) and there is a 64% chance to afflict the target with Burn for 2 rounds. Then deal Fire Damage to a different Enemy in any lane (Damage Rate: +48%) and there is a 32% chance to afflict the target with Burn for 2 rounds.",
+        "Rounds 2,5,8: Command deal Fire Damage to 1 Enemy in any lane (Damage Rate: +120%) and there is a 80% chance to afflict the target with Burn for 2 rounds. Then deal Fire Damage to a different Enemy in any lane (Damage Rate: +60%) and there is a 40% chance to afflict the target with Burn for 2 rounds.",
+        "Rounds 2,5,8: Command deal Fire Damage to 1 Enemy in any lane (Damage Rate: +150%) and there is a 100% chance to afflict the target with Burn for 2 rounds. Then deal Fire Damage to a different Enemy in any lane (Damage Rate: +75%) and there is a 50% chance to afflict the target with Burn for 2 rounds.",
+      ] },
+  ],
+  Tashix: [
+    // 2★
+    { short: [
+        "Tactical Dmg -10.5% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -12.6% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -14.7% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -17.85% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -21% to 1 Enemy w/ Tactical Dmg",
+      ],
+      desc: [
+        "Start of Combat: Reduce Tactical Damage Dealt by -10.5% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -12.6% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -14.7% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -17.85% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -21% of 1 Enemy that deals Tactical Damage until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Intelligence +12% & Instinct -10% to 2 Enemies adjacency",
+        "Intelligence +14.4% & Instinct -12% to 2 Enemies adjacency",
+        "Intelligence +16.8% & Instinct -15% to 2 Enemies adjacency",
+        "Intelligence +20.4% & Instinct -17% to 2 Enemies adjacency",
+        "Intelligence +24% & Instinct -20% to 2 Enemies adjacency",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence by +12% and reduce Instinct by -10% of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +14.4% and reduce Instinct by -12% of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +16.8% and reduce Instinct by -14% of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +20.4% and reduce Instinct by -17% of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+        "Start of Combat: Increase your Intelligence by +24% and reduce Instinct by -20% of 2 Enemies within adjacency. Each effect lasts until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Weakened -15% to 3 Enemies w/ 4+ stacks (10% or 20% chance for Enemy w/ Tactical Dmg)",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Weakened -15% to 3 Enemies w/ 4+ stacks (12% or 24% chance for Enemy w/ Tactical Dmg)",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Weakened -15% to 3 Enemies w/ 4+ stacks (14% or 28% chance for Enemy w/ Tactical Dmg)",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Weakened -15% to 3 Enemies w/ 4+ stacks (17% or 34% chance for Enemy w/ Tactical Dmg)",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Weakened -15% to 3 Enemies w/ 4+ stacks (20% or 40% chance for Enemy w/ Tactical Dmg)",
+      ],
+      desc: [
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 4 or more Stacks of Mirage, there is a 10% chance to afflict with Weakened (-15%) 3 Enemies in any lane for 2 rounds. This effect is checked separately for each target and is doubled (20%) against targets that deal Tactical Damage.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 4 or more Stacks of Mirage, there is a 12% chance to afflict with Weakened (-15%) 3 Enemies in any lane for 2 rounds. This effect is checked separately for each target and is doubled (24%) against targets that deal Tactical Damage.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 4 or more Stacks of Mirage, there is a 14% chance to afflict with Weakened (-15%) 3 Enemies in any lane for 2 rounds. This effect is checked separately for each target and is doubled (28%) against targets that deal Tactical Damage.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 4 or more Stacks of Mirage, there is a 17% chance to afflict with Weakened (-15%) 3 Enemies in any lane for 2 rounds. This effect is checked separately for each target and is doubled (34%) against targets that deal Tactical Damage.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 4 or more Stacks of Mirage, there is a 20% chance to afflict with Weakened (-15%) 3 Enemies in any lane for 2 rounds. This effect is checked separately for each target and is doubled (40%) against targets that deal Tactical Damage.",
+      ] },
+    // 8★
+    { short: [
+        "Instinct & Initiative -5% to 3 Enemies",
+        "Instinct & Initiative -6% to 3 Enemies",
+        "Instinct & Initiative -7% to 3 Enemies",
+        "Instinct & Initiative -8.85% to 3 Enemies",
+        "Instinct & Initiative -10.5% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Instinct and Initiative by -5% (enhanced by Initiative) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Instinct and Initiative by -6% (enhanced by Initiative) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Instinct and Initiative by -7% (enhanced by Initiative) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Instinct and Initiative by -8.85% (enhanced by Initiative) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Instinct and Initiative by -10.5% (enhanced by Initiative) of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Fire Dmg +150% to 1 Enemy (most troops) w/ 7+ stacks",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Fire Dmg +220% to 1 Enemy (most troops) w/ 7+ stacks",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Fire Dmg +290% to 1 Enemy (most troops) w/ 7+ stacks",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Fire Dmg +380% to 1 Enemy (most troops) w/ 7+ stacks",
+        "Fire Dmg +2.5% per-stack (Max 10) (25% chance) | Fire Dmg +500% to 1 Enemy (most troops) w/ 7+ stacks",
+      ],
+      desc: [
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 7 or more Stacks of Mirage, deal Fire Damage (Damage Rate: +150%) to the Enemy with the most troops. This effect can only trigger once per combat.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 7 or more Stacks of Mirage, deal Fire Damage (Damage Rate: +220%) to the Enemy with the most troops. This effect can only trigger once per combat.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 7 or more Stacks of Mirage, deal Fire Damage (Damage Rate: +290%) to the Enemy with the most troops. This effect can only trigger once per combat.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 7 or more Stacks of Mirage, deal Fire Damage (Damage Rate: +380%) to the Enemy with the most troops. This effect can only trigger once per combat.",
+        "Each Round: 25% chance to gain 1 Stack of Mirage (Max 10 Stacks). Each Stack of Mirage increases your Fire Damage Dealt by +2.5% until the end of combat. Each Round: If you have 7 or more Stacks of Mirage, deal Fire Damage (Damage Rate: +500%) to the Enemy with the most troops. This effect can only trigger once per combat.",
+      ] },
+  ],
+  Vaeldra: [
+    // 2★
+    { short: [
+        "Dmg Received -5% | Strength +8.5%",
+        "Dmg Received -6% | Strength +10.2%",
+        "Dmg Received -7% | Strength +11.9%",
+        "Dmg Received -8.5% | Strength +14.45%",
+        "Dmg Received -10% | Strength +17%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -5% and increase your Strength by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Strength by +10.2% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7% and increase your Strength by +11.9% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.5% and increase your Strength by +14.45% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10% and increase your Strength by +17% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Instinct & Initiative -18% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -24% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -28% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -34% to 2 Enemies adjacency (3 rounds)",
+        "Instinct & Initiative -40% to 2 Enemies adjacency (3 rounds)",
+      ],
+      desc: [
+        "Round 1: Reduce Instinct and Initiative by -18% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 round(s).",
+        "Round 1: Reduce Instinct and Initiative by -21.6% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 round(s).",
+        "Round 1: Reduce Instinct and Initiative by -25.2% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 round(s).",
+        "Round 1: Reduce Instinct and Initiative by -30.6% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 round(s).",
+        "Round 1: Reduce Instinct and Initiative by -36% (enhanced by Intelligence) of 2 Enemies within adjacency for 3 round(s).",
+      ] },
+    // 6★
+    { short: [
+        "Physical (Command & Habits) & Fire Dmg Received +6% to Enemies w/ Taunt (2 rounds)",
+        "Physical (Command & Habits) & Fire Dmg Received +7.2% to Enemies w/ Taunt (2 rounds)",
+        "Physical (Command & Habits) & Fire Dmg Received +8.4% to Enemies w/ Taunt (2 rounds)",
+        "Physical (Command & Habits) & Fire Dmg Received +10.2% to Enemies w/ Taunt (2 rounds)",
+        "Physical (Command & Habits) & Fire Dmg Received +12% to Enemies w/ Taunt (2 rounds)",
+      ],
+      desc: [
+        "When you afflict an Enemy with Taunt: Increase their Physical Damage Received (Command & Habits) and Fire Damage Received by +6% for 2 rounds.",
+        "When you afflict an Enemy with Taunt: Increase their Physical Damage Received (Command & Habits) and Fire Damage Received by +7.2% for 2 rounds.",
+        "When you afflict an Enemy with Taunt: Increase their Physical Damage Received (Command & Habits) and Fire Damage Received by +8.4% for 2 rounds.",
+        "When you afflict an Enemy with Taunt: Increase their Physical Damage Received (Command & Habits) and Fire Damage Received by +10.2% for 2 rounds.",
+        "When you afflict an Enemy with Taunt: Increase their Physical Damage Received (Command & Habits) and Fire Damage Received by +12% for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Fire Dmg to 1 Ally (Left flank/others) & Physical Dmg to 1 Ally (Right Flank/others) by +12% (3 rounds)",
+        "Fire Dmg to 1 Ally (Left flank/others) & Physical Dmg to 1 Ally (Right Flank/others) by +14.4% (3 rounds)",
+        "Fire Dmg to 1 Ally (Left flank/others) & Physical Dmg to 1 Ally (Right Flank/others) by +16.8% (3 rounds)",
+        "Fire Dmg to 1 Ally (Left flank/others) & Physical Dmg to 1 Ally (Right Flank/others) by +20.4% (3 rounds)",
+        "Fire Dmg to 1 Ally (Left flank/others) & Physical Dmg to 1 Ally (Right Flank/others) by +24% (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Right Flank) by +12%. Each effects lasts for 3 rounds.",
+        "Start of Round 1: Increase the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Right Flank) by +14.4%. Each effects lasts for 3 rounds.",
+        "Start of Round 1: Increase the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Right Flank) by +16.8%. Each effects lasts for 3 rounds.",
+        "Start of Round 1: Increase the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Right Flank) by +20.4%. Each effects lasts for 3 rounds.",
+        "Start of Round 1: Increase the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Right Flank) by +24%. Each effects lasts for 3 rounds.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg Received -10% (3 rounds) | Taunt (Stagger w/ Taunted) all Enemies (40% chance) (3 rounds)",
+        "Physical Dmg Received -13% (3 rounds) | Taunt (Stagger w/ Taunted) all Enemies (52% chance) (3 rounds)",
+        "Physical Dmg Received -16% (3 rounds) | Taunt (Stagger w/ Taunted) all Enemies (64% chance) (3 rounds)",
+        "Physical Dmg Received -20% (3 rounds) | Taunt (Stagger w/ Taunted) all Enemies (80% chance) (3 rounds)",
+        "Physical Dmg Received -25% (3 rounds) | Taunt (Stagger w/ Taunted) all Enemies (100% chance) (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Reduce your Physical Damage Received by -10% for 3 rounds. Start of Rounds 1-3: 40% chance to Taunt all Enemies until the end of the round. Targets that are already afflicted with Taunt will be afflict with Stagger instead.",
+        "Start of Round 1: Reduce your Physical Damage Received by -13% for 3 rounds. Start of Rounds 1-3: 52% chance to Taunt all Enemies until the end of the round. Targets that are already afflicted with Taunt will be afflict with Stagger instead.",
+        "Start of Round 1: Reduce your Physical Damage Received by -16% for 3 rounds. Start of Rounds 1-3: 64% chance to Taunt all Enemies until the end of the round. Targets that are already afflicted with Taunt will be afflict with Stagger instead.",
+        "Start of Round 1: Reduce your Physical Damage Received by -20% for 3 rounds. Start of Rounds 1-3: 80% chance to Taunt all Enemies until the end of the round. Targets that are already afflicted with Taunt will be afflict with Stagger instead.",
+        "Start of Round 1: Reduce your Physical Damage Received by -25% for 3 rounds. Start of Rounds 1-3: 100% chance to Taunt all Enemies until the end of the round. Targets that are already afflicted with Taunt will be afflict with Stagger instead.",
+      ] },
+  ],
+  Velar: [
+    // 2★
+    { short: [
+        "Tactical Dmg +10% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +12% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +14% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +17% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +20% to 1 Ally (Vanguard/other)",
+      ],
+      desc: [
+        "Start of Combat: Increase Tactical Damage Dealt by +10% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +12% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +14% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +17% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +20% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Instinct & Initiative +16%",
+        "Instinct & Initiative +19.2%",
+        "Instinct & Initiative +22.4%",
+        "Instinct & Initiative +27.2%",
+        "Instinct & Initiative +32%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Instinct and Initiative by +16% until the end of combat.",
+        "Start of Combat: Increase your Instinct and Initiative by +19.2% until the end of combat.",
+        "Start of Combat: Increase your Instinct and Initiative by +22.4% until the end of combat.",
+        "Start of Combat: Increase your Instinct and Initiative by +27.2% until the end of combat.",
+        "Start of Combat: Increase your Instinct and Initiative by +32% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "First-Strike 3 Allies (12% chance) (2 rounds) | Slow 3 Enemies (12% chance)",
+        "First-Strike 3 Allies (14.4% chance) (2 rounds) | Slow 3 Enemies (14.4% chance)",
+        "First-Strike 3 Allies (16.8% chance) (2 rounds) | Slow 3 Enemies (16.8% chance)",
+        "First-Strike 3 Allies (20.4% chance) (2 rounds) | Slow 3 Enemies (20.4% chance)",
+        "First-Strike 3 Allies (24% chance) (2 rounds) | Slow 3 Enemies (24% chance)",
+      ],
+      desc: [
+        "Rounds 2,4,6,8: 12% chance to grant First-Strike to 3 Allies in any lane and afflict Slow on 3 Enemies in any lane. Each effect is checked separately per target and lasts for 2 rounds.",
+        "Rounds 2,4,6,8: 14.4% chance to grant First-Strike to 3 Allies in any lane and afflict Slow on 3 Enemies in any lane. Each effect is checked separately per target and lasts for 2 rounds.",
+        "Rounds 2,4,6,8: 16.8% chance to grant First-Strike to 3 Allies in any lane and afflict Slow on 3 Enemies in any lane. Each effect is checked separately per target and lasts for 2 rounds.",
+        "Rounds 2,4,6,8: 20.4% chance to grant First-Strike to 3 Allies in any lane and afflict Slow on 3 Enemies in any lane. Each effect is checked separately per target and lasts for 2 rounds.",
+        "Rounds 2,4,6,8: 24% chance to grant First-Strike to 3 Allies in any lane and afflict Slow on 3 Enemies in any lane. Each effect is checked separately per target and lasts for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Strength & Instinct +5% to 3 Allies",
+        "Strength & Instinct +6% to 3 Allies",
+        "Strength & Instinct +7% to 3 Allies",
+        "Strength & Instinct +8.5% to 3 Allies",
+        "Strength & Instinct +10% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Strength and Instinct by +5% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength and Instinct by +6% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength and Instinct by +7% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength and Instinct by +8.5% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Strength and Instinct by +10% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Cleanse Bleed/Panic/Burn each Ally (12% chance) | Recovery +18% to 3 Allies",
+        "Cleanse Bleed/Panic/Burn each Ally (16% chance) | Recovery +23.4% to 3 Allies",
+        "Cleanse Bleed/Panic/Burn each Ally (19% chance) | Recovery +28.8% to 3 Allies",
+        "Cleanse Bleed/Panic/Burn each Ally (24% chance) | Recovery +36% to 3 Allies",
+        "Cleanse Bleed/Panic/Burn each Ally (30% chance) | Recovery +45% to 3 Allies",
+      ],
+      desc: [
+        "Each Round: Command gains 12% chance to Cleanse 1 instance of Bleed, Panic, or Burn from each Ally . This chance is checked separately per target. Rounds 2,4,6,8: Apply Recovery to 3 Allies in any lane (Recovery Rate: +18%, enhanced by Initiative).",
+        "Each Round: Command gains 16% chance to Cleanse 1 instance of Bleed, Panic, or Burn from each Ally . This chance is checked separately per target. Rounds 2,4,6,8: Apply Recovery to 3 Allies in any lane (Recovery Rate: +23.4%, enhanced by Initiative).",
+        "Each Round: Command gains 19% chance to Cleanse 1 instance of Bleed, Panic, or Burn from each Ally . This chance is checked separately per target. Rounds 2,4,6,8: Apply Recovery to 3 Allies in any lane (Recovery Rate: +28.8%, enhanced by Initiative).",
+        "Each Round: Command gains 24% chance to Cleanse 1 instance of Bleed, Panic, or Burn from each Ally . This chance is checked separately per target. Rounds 2,4,6,8: Apply Recovery to 3 Allies in any lane (Recovery Rate: +36%, enhanced by Initiative).",
+        "Each Round: Command gains 30% chance to Cleanse 1 instance of Bleed, Panic, or Burn from each Ally . This chance is checked separately per target. Rounds 2,4,6,8: Apply Recovery to 3 Allies in any lane (Recovery Rate: +45%, enhanced by Initiative).",
+      ] },
+  ],
+  Zivern: [
+    // 2★
+    { short: [
+        "Strength & Instinct of 3 Enemies -5%",
+        "Strength & Instinct of 3 Enemies -6%",
+        "Strength & Instinct of 3 Enemies -7%",
+        "Strength & Instinct of 3 Enemies -8.85%",
+        "Strength & Instinct of 3 Enemies -10.5%",
+      ],
+      desc: [
+        "Start of Combat: Reduce the Strength and Instinct (enhanced by Intelligence) of 3 Enemies by -5% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Instinct (enhanced by Intelligence) of 3 Enemies by -6% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Instinct (enhanced by Intelligence) of 3 Enemies by -7% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Instinct (enhanced by Intelligence) of 3 Enemies by -8.85% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Instinct (enhanced by Intelligence) of 3 Enemies by -10.5% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Intelligence & Instinct +16%",
+        "Intelligence & Instinct +19.2%",
+        "Intelligence & Instinct +22.4%",
+        "Intelligence & Instinct +27.2%",
+        "Intelligence & Instinct +32%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence and Instinct by +16% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Instinct by +19.2% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Instinct by +22.4% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Instinct by +27.2% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Instinct by +32% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Instinct -15% & Panic (+20% Dmg) to 3 Enemies (30% chance) (2 rounds)",
+        "Instinct -15% & Panic (+20% Dmg) to 3 Enemies (36% chance) (2 rounds)",
+        "Instinct -15% & Panic (+20% Dmg) to 3 Enemies (42% chance) (2 rounds)",
+        "Instinct -15% & Panic (+20% Dmg) to 3 Enemies (51% chance) (2 rounds)",
+        "Instinct -15% & Panic (+20% Dmg) to 3 Enemies (60% chance) (2 rounds)",
+      ],
+      desc: [
+        "Odd-numbered Rounds: 30% chance to reduce the Instinct (enhanced by Intelligence) by -15% and afflict Panic (Damage Rate: +20%) on 3 Enemies in any lane for 2 rounds.",
+        "Odd-numbered Rounds: 36% chance to reduce the Instinct (enhanced by Intelligence) by -15% and afflict Panic (Damage Rate: +20%) on 3 Enemies in any lane for 2 rounds.",
+        "Odd-numbered Rounds: 42% chance to reduce the Instinct (enhanced by Intelligence) by -15% and afflict Panic (Damage Rate: +20%) on 3 Enemies in any lane for 2 rounds.",
+        "Odd-numbered Rounds: 51% chance to reduce the Instinct (enhanced by Intelligence) by -15% and afflict Panic (Damage Rate: +20%) on 3 Enemies in any lane for 2 rounds.",
+        "Odd-numbered Rounds: 60% chance to reduce the Instinct (enhanced by Intelligence) by -15% and afflict Panic (Damage Rate: +20%) on 3 Enemies in any lane for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg (Command & Habits) & Tactical Dmg received -3.5% to 2 Allies",
+        "Physical Dmg (Command & Habits) & Tactical Dmg received -4.2% to 2 Allies",
+        "Physical Dmg (Command & Habits) & Tactical Dmg received -4.9% to 2 Allies",
+        "Physical Dmg (Command & Habits) & Tactical Dmg received -5.95% to 2 Allies",
+        "Physical Dmg (Command & Habits) & Tactical Dmg received -7% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Physical Damage Received (Command & Habits) and Tactical Damage Received by -3.5% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command & Habits) and Tactical Damage Received by -4.2% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command & Habits) and Tactical Damage Received by -4.9% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command & Habits) and Tactical Damage Received by -5.95% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command & Habits) and Tactical Damage Received by -7% of 2 other Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Overwhelm 2 Enemies adjacency (10% Chance or 20% w/ Vulnerable) (2 rounds)",
+        "Overwhelm 2 Enemies adjacency (13% Chance or 26% w/ Vulnerable) (2 rounds)",
+        "Overwhelm 2 Enemies adjacency (16% Chance or 32% w/ Vulnerable) (2 rounds)",
+        "Overwhelm 2 Enemies adjacency (20% Chance or 40% w/ Vulnerable) (2 rounds)",
+        "Overwhelm 2 Enemies adjacency (25% Chance or 50% w/ Vulnerable) (2 rounds)",
+      ],
+      desc: [
+        "Odd-numbered Rounds: 10% chance to afflict Overwhelm on 2 Enemies within adjacency for 2 rounds. This chance is doubled (20%) if the target is afflicted with Vulnerable.",
+        "Odd-numbered Rounds: 13% chance to afflict Overwhelm on 2 Enemies within adjacency for 2 rounds. This chance is doubled (26%) if the target is afflicted with Vulnerable.",
+        "Odd-numbered Rounds: 16% chance to afflict Overwhelm on 2 Enemies within adjacency for 2 rounds. This chance is doubled (32%) if the target is afflicted with Vulnerable.",
+        "Odd-numbered Rounds: 20% chance to afflict Overwhelm on 2 Enemies within adjacency for 2 rounds. This chance is doubled (40%) if the target is afflicted with Vulnerable.",
+        "Odd-numbered Rounds: 25% chance to afflict Overwhelm on 2 Enemies within adjacency for 2 rounds. This chance is doubled (50%) if the target is afflicted with Vulnerable.",
+      ] },
+  ],
+  Vermax: [
+    // 2★
+    { short: [
+        "Fire Dmg Received (-5% w/ 75% troop | -10% w/ 50% troop | -15% w/ 25% troop) to all Allies",
+        "Fire Dmg Received (-6% w/ 75% troop | -12% w/ 50% troop | -18% w/ 25% troop) to all Allies",
+        "Fire Dmg Received (-7% w/ 75% troop | -14% w/ 50% troop | -21% w/ 25% troop) to all Allies",
+        "Fire Dmg Received (-8.5% w/ 75% troop | -17% w/ 50% troop | -25.5% w/ 25% troop) to all Allies",
+        "Fire Dmg Received (-10% w/ 75% troop | -20% w/ 50% troop | -30% w/ 25% troop) to all Allies",
+      ],
+      desc: [
+        "Start of Each Round: Reduce the Fire Damage Received of all alies bellow 75% troop capacity by -5% until the end of the round. This effect is doubled (-10%) for target's below 50% troop capacity, and tripled (-15%) for targets below 25% troop capacity.",
+        "Start of Each Round: Reduce the Fire Damage Received of all alies bellow 75% troop capacity by -6% until the end of the round. This effect is doubled (-12%) for target's below 50% troop capacity, and tripled (-18%) for targets below 25% troop capacity.",
+        "Start of Each Round: Reduce the Fire Damage Received of all alies bellow 75% troop capacity by -7% until the end of the round. This effect is doubled (-14%) for target's below 50% troop capacity, and tripled (-21%) for targets below 25% troop capacity.",
+        "Start of Each Round: Reduce the Fire Damage Received of all alies bellow 75% troop capacity by -8.5% until the end of the round. This effect is doubled (-17%) for target's below 50% troop capacity, and tripled (-25.5%) for targets below 25% troop capacity.",
+        "Start of Each Round: Reduce the Fire Damage Received of all alies bellow 75% troop capacity by -10% until the end of the round. This effect is doubled (-20%) for target's below 50% troop capacity, and tripled (-30%) for targets below 25% troop capacity.",
+      ] },
+    // 4★
+    { short: [
+        "Instinct +18% & Initiative +9% to Ally (highest Instinct)",
+        "Instinct +21.6% & Initiative +10.8% to Ally (highest Instinct)",
+        "Instinct +25.2% & Initiative +12.6% to Ally (highest Instinct)",
+        "Instinct +30.6% & Initiative +15.3% to Ally (highest Instinct)",
+        "Instinct +36% & Initiative +18% to Ally (highest Instinct)",
+      ],
+      desc: [
+        "Start of Combat: Increase Instinct by +18% and Initiative by +9% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +21.6% and Initiative by +10.8% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +25.2% and Initiative by +12.6% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +30.6% and Initiative by +15.3% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+        "Start of Combat: Increase Instinct by +36% and Initiative by +18% of the Ally with the highest Instinct until the end of combat. Both effects are enhanced by Strength.",
+      ] },
+    // 6★
+    { short: [
+        "Physical Dmg +5% per-stack (Max 4) (2x to Enemies w/ Fire Dmg) (50% chance) | Tactical Dmg +2.5% per-stack to 1 Ally (Max 10) (2x to Enemies w/ Fire Dmg) (50% chance)",
+        "Physical Dmg +5% per-stack (Max 4) (2x to Enemies w/ Fire Dmg) (60% chance) | Tactical Dmg +2.5% per-stack to 1 Ally (Max 10) (2x to Enemies w/ Fire Dmg) (60% chance)",
+        "Physical Dmg +5% per-stack (Max 4) (2x to Enemies w/ Fire Dmg) (70% chance) | Tactical Dmg +2.5% per-stack to 1 Ally (Max 10) (2x to Enemies w/ Fire Dmg) (70% chance)",
+        "Physical Dmg +5% per-stack (Max 4) (2x to Enemies w/ Fire Dmg) (85% chance) | Tactical Dmg +2.5% per-stack to 1 Ally (Max 10) (2x to Enemies w/ Fire Dmg) (85% chance)",
+        "Physical Dmg +5% per-stack (Max 4) (2x to Enemies w/ Fire Dmg) (100% chance) | Tactical Dmg +2.5% per-stack to 1 Ally (Max 10) (2x to Enemies w/ Fire Dmg) (100% chance)",
+      ],
+      desc: [
+        "Start of Combat: 50% chance to grant yourself 1 stack of Rallying Flame (Max 4 Stacks) until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Rallying Flame increases your Physical Damage Dealt by +5%. Start of Combat: 50% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 Ally that deals Tactical Damage until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Spreading Blaze increases the target's Tactical Damage Dealt by +2.5% until the end of combat.",
+        "Start of Combat: 60% chance to grant yourself 1 stack of Rallying Flame (Max 4 Stacks) until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Rallying Flame increases your Physical Damage Dealt by +5%. Start of Combat: 60% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 Ally that deals Tactical Damage until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Spreading Blaze increases the target's Tactical Damage Dealt by +2.5% until the end of combat.",
+        "Start of Combat: 70% chance to grant yourself 1 stack of Rallying Flame (Max 4 Stacks) until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Rallying Flame increases your Physical Damage Dealt by +5%. Start of Combat: 70% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 Ally that deals Tactical Damage until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Spreading Blaze increases the target's Tactical Damage Dealt by +2.5% until the end of combat.",
+        "Start of Combat: 85% chance to grant yourself 1 stack of Rallying Flame (Max 4 Stacks) until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Rallying Flame increases your Physical Damage Dealt by +5%. Start of Combat: 85% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 Ally that deals Tactical Damage until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Spreading Blaze increases the target's Tactical Damage Dealt by +2.5% until the end of combat.",
+        "Start of Combat: 100% chance to grant yourself 1 stack of Rallying Flame (Max 4 Stacks) until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Rallying Flame increases your Physical Damage Dealt by +5%. Start of Combat: 100% chance to grant 1 stack of Spreading Blaze (Max 10 Stacks) to 1 Ally that deals Tactical Damage until the end of combat. Repeat this chance for each enemy that deals Fire Damage. Each stack of Spreading Blaze increases the target's Tactical Damage Dealt by +2.5% until the end of combat.",
+      ] },
+    // 8★
+    { short: [
+        "Dmg Received -5% | Strength +8.5%",
+        "Dmg Received -6% | Strength +10.2%",
+        "Dmg Received -7% | Strength +11.9%",
+        "Dmg Received -8.5% | Strength +14.45%",
+        "Dmg Received -10% | Strength +17%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -5% and increase your Strength by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6% and increase your Strength by +10.2% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -7% and increase your Strength by +11.9% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8.5% and increase your Strength by +14.45% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -10% and increase your Strength by +17% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Advantage +15% (20% or 30% chance if self-cleanse Weeakened) (2 rounds)",
+        "Advantage +15% (26% or 39% chance if self-cleanse Weeakened) (2 rounds)",
+        "Advantage +15% (32% or 48% chance if self-cleanse Weeakened) (2 rounds)",
+        "Advantage +15% (40% or 60% chance if self-cleanse Weeakened) (2 rounds)",
+        "Advantage +15% (50% or 75% chance if self-cleanse Weeakened) (2 rounds)",
+      ],
+      desc: [
+        "Start of Each Round: 20% chance to grant yourself Advantage (+15%) for 2 rounds. This chance is increased by 1.5x (30%) if you are afflicted with Weakened, and if successful removes the Weakened effect.",
+        "Start of Each Round: 26% chance to grant yourself Advantage (+15%) for 2 rounds. This chance is increased by 1.5x (39%) if you are afflicted with Weakened, and if successful removes the Weakened effect.",
+        "Start of Each Round: 32% chance to grant yourself Advantage (+15%) for 2 rounds. This chance is increased by 1.5x (48%) if you are afflicted with Weakened, and if successful removes the Weakened effect.",
+        "Start of Each Round: 40% chance to grant yourself Advantage (+15%) for 2 rounds. This chance is increased by 1.5x (60%) if you are afflicted with Weakened, and if successful removes the Weakened effect.",
+        "Start of Each Round: 50% chance to grant yourself Advantage (+15%) for 2 rounds. This chance is increased by 1.5x (75%) if you are afflicted with Weakened, and if successful removes the Weakened effect.",
+      ] },
+  ],
+  Tessarion: [
+    // 2★
+    { short: [
+        "Physical & Fire Dmg (+7% or 14% if >75% troop or w/ Advantage) (each round)",
+        "Physical & Fire Dmg (+8.4% or 16.8% if >75% troop or w/ Advantage) (each round)",
+        "Physical & Fire Dmg (+9.8% or 19.6% if >75% troop or w/ Advantage) (each round)",
+        "Physical & Fire Dmg (+11.9% or 23.8% if >75% troop or w/ Advantage) (each round)",
+        "Physical & Fire Dmg (+14% or 28% if >75% troop or w/ Advantage) (each round)",
+      ],
+      desc: [
+        "Start of Each Round: Increase your Physical and Fire Damage Dealt by +7% until the end of the round. Double these effects (+14%) if you are above 75% Troop Capacity or if you have Advantage.",
+        "Start of Each Round: Increase your Physical and Fire Damage Dealt by +8.4% until the end of the round. Double these effects (+16.8%) if you are above 75% Troop Capacity or if you have Advantage.",
+        "Start of Each Round: Increase your Physical and Fire Damage Dealt by +9.8% until the end of the round. Double these effects (+19.6%) if you are above 75% Troop Capacity or if you have Advantage.",
+        "Start of Each Round: Increase your Physical and Fire Damage Dealt by +11.9% until the end of the round. Double these effects (+23.8%) if you are above 75% Troop Capacity or if you have Advantage.",
+        "Start of Each Round: Increase your Physical and Fire Damage Dealt by +14% until the end of the round. Double these effects (+28%) if you are above 75% Troop Capacity or if you have Advantage.",
+      ] },
+    // 4★
+    { short: [
+        "Fire Dmg +10% to 1 Ally (prioritizes Left Flank)",
+        "Fire Dmg +12% to 1 Ally (prioritizes Left Flank)",
+        "Fire Dmg +14% to 1 Ally (prioritizes Left Flank)",
+        "Fire Dmg +17% to 1 Ally (prioritizes Left Flank)",
+        "Fire Dmg +20% to 1 Ally (prioritizes Left Flank)",
+      ],
+      desc: [
+        "Start of Combat: Increase the Fire Damage Dealt by +10% of 1 Ally in any lane (prioritizes the Left Flank) until the end of combat.",
+        "Start of Combat: Increase the Fire Damage Dealt by +12% of 1 Ally in any lane (prioritizes the Left Flank) until the end of combat.",
+        "Start of Combat: Increase the Fire Damage Dealt by +14% of 1 Ally in any lane (prioritizes the Left Flank) until the end of combat.",
+        "Start of Combat: Increase the Fire Damage Dealt by +17% of 1 Ally in any lane (prioritizes the Left Flank) until the end of combat.",
+        "Start of Combat: Increase the Fire Damage Dealt by +20% of 1 Ally in any lane (prioritizes the Left Flank) until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Fire Dmg +12% & Physical Dmg Received -12% to 2 Allies (also to self if afflicted w/ Panic) (25% chance) (Odd rounds)",
+        "Fire Dmg +12% & Physical Dmg Received -12% to 2 Allies (also to self if afflicted w/ Panic) (30% chance) (Odd rounds)",
+        "Fire Dmg +12% & Physical Dmg Received -12% to 2 Allies (also to self if afflicted w/ Panic) (35% chance) (Odd rounds)",
+        "Fire Dmg +12% & Physical Dmg Received -12% to 2 Allies (also to self if afflicted w/ Panic) (42.5% chance) (Odd rounds)",
+        "Fire Dmg +12% & Physical Dmg Received -12% to 2 Allies (also to self if afflicted w/ Panic) (50% chance) (Odd rounds)",
+      ],
+      desc: [
+        "Start of Odd-numbered Rounds: 25% chance to increase your Fire Damage Dealt by +12% and reduce the Physical Damage Received by -12% of 2 other Allies in any lane. If you are afflicted with Panic, also apply the reduced Physical Damage Received effect to yourself. Each effect lasts for 2 rounds.",
+        "Start of Odd-numbered Rounds: 30% chance to increase your Fire Damage Dealt by +12% and reduce the Physical Damage Received by -12% of 2 other Allies in any lane. If you are afflicted with Panic, also apply the reduced Physical Damage Received effect to yourself. Each effect lasts for 2 rounds.",
+        "Start of Odd-numbered Rounds: 35% chance to increase your Fire Damage Dealt by +12% and reduce the Physical Damage Received by -12% of 2 other Allies in any lane. If you are afflicted with Panic, also apply the reduced Physical Damage Received effect to yourself. Each effect lasts for 2 rounds.",
+        "Start of Odd-numbered Rounds: 42.5% chance to increase your Fire Damage Dealt by +12% and reduce the Physical Damage Received by -12% of 2 other Allies in any lane. If you are afflicted with Panic, also apply the reduced Physical Damage Received effect to yourself. Each effect lasts for 2 rounds.",
+        "Start of Odd-numbered Rounds: 50% chance to increase your Fire Damage Dealt by +12% and reduce the Physical Damage Received by -12% of 2 other Allies in any lane. If you are afflicted with Panic, also apply the reduced Physical Damage Received effect to yourself. Each effect lasts for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Intelligence +18% | Initiative +9% to 1 Ally (highest Intelligence)",
+        "Intelligence +21.6% | Initiative +10.8% to 1 Ally (highest Intelligence)",
+        "Intelligence +25.2% | Initiative +12.6% to 1 Ally (highest Intelligence)",
+        "Intelligence +30.6% | Initiative +15.3% to 1 Ally (highest Intelligence)",
+        "Intelligence +36% | Initiative +18% to 1 Ally (highest Intelligence)",
+      ],
+      desc: [
+        "Increase Intelligence by +18% and Initiative by +9% of the Ally with the highest Intelligence until the end of combat.",
+        "Increase Intelligence by +21.6% and Initiative by +10.8% of the Ally with the highest Intelligence until the end of combat.",
+        "Increase Intelligence by +25.2% and Initiative by +12.6% of the Ally with the highest Intelligence until the end of combat.",
+        "Increase Intelligence by +30.6% and Initiative by +15.3% of the Ally with the highest Intelligence until the end of combat.",
+        "Increase Intelligence by +36% and Initiative by +18% of the Ally with the highest Intelligence until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Dmg Received -10% & Intelligence +15% to 1 Ally w/ Fire Dmg (40% chance) (Double if >75% troop) (Odd rounds)",
+        "Dmg Received -12% & Intelligence +18% to 1 Ally w/ Fire Dmg (45% chance) (Double if >75% troop) (Odd rounds)",
+        "Dmg Received -14% & Intelligence +21% to 1 Ally w/ Fire Dmg (50% chance) (Double if >75% troop) (Odd rounds)",
+        "Dmg Received -16% & Intelligence +24% to 1 Ally w/ Fire Dmg (55% chance) (Double if >75% troop) (Odd rounds)",
+        "Dmg Received -18% & Intelligence +27% to 1 Ally w/ Fire Dmg (60% chance) (Double if >75% troop) (Odd rounds)",
+      ],
+      desc: [
+        "Start of Odd-numbered Rounds: 40% chance to reduce the Damage Received by -10% and increase the Intelligence (enhanced by Intelligence) by +15% of 1 other Ally in any lane that deals Fire Damage for 2 rounds. If you are above 75% Troop Capacity, double the Damage Received reduction (-20%) and Intelligence increase (+30%).",
+        "Start of Odd-numbered Rounds: 52% chance to reduce the Damage Received by -10% and increase the Intelligence (enhanced by Intelligence) by +15% of 1 other Ally in any lane that deals Fire Damage for 2 rounds. If you are above 75% Troop Capacity, double the Damage Received reduction (-20%) and Intelligence increase (+30%).",
+        "Start of Odd-numbered Rounds: 64% chance to reduce the Damage Received by -10% and increase the Intelligence (enhanced by Intelligence) by +15% of 1 other Ally in any lane that deals Fire Damage for 2 rounds. If you are above 75% Troop Capacity, double the Damage Received reduction (-20%) and Intelligence increase (+30%).",
+        "Start of Odd-numbered Rounds: 80% chance to reduce the Damage Received by -10% and increase the Intelligence (enhanced by Intelligence) by +15% of 1 other Ally in any lane that deals Fire Damage for 2 rounds. If you are above 75% Troop Capacity, double the Damage Received reduction (-20%) and Intelligence increase (+30%).",
+        "Start of Odd-numbered Rounds: 100% chance to reduce the Damage Received by -10% and increase the Intelligence (enhanced by Intelligence) by +15% of 1 other Ally in any lane that deals Fire Damage for 2 rounds. If you are above 75% Troop Capacity, double the Damage Received reduction (-20%) and Intelligence increase (+30%).",
+      ] },
+  ],
+  Tairax: [
+    // 2★
+    { short: [
+        "Strength & Initiative -16% to 1 Enemy (same lane) (5 rounds) | Intelligence & Initiative +16% (5 rounds)",
+        "Strength & Initiative -19.2% to 1 Enemy (same lane) (5 rounds) | Intelligence & Initiative +19.2% (5 rounds)",
+        "Strength & Initiative -22.4% to 1 Enemy (same lane) (5 rounds) | Intelligence & Initiative +22.4% (5 rounds)",
+        "Strength & Initiative -27.2% to 1 Enemy (same lane) (5 rounds) | Intelligence & Initiative +27.2% (5 rounds)",
+        "Strength & Initiative -32% to 1 Enemy (same lane) (5 rounds) | Intelligence & Initiative +32% (5 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Reduce the Strength and Initiative by -16% (enhanced by Intelligence) of 1 Enemy in the same lane for 5 round(s). Start of Round 6: Increase your Intelligence and Initiative by +16% for 5 round(s).",
+        "Start of Round 1: Reduce the Strength and Initiative by -19.2% (enhanced by Intelligence) of 1 Enemy in the same lane for 5 round(s). Start of Round 6: Increase your Intelligence and Initiative by +19.2% for 5 round(s).",
+        "Start of Round 1: Reduce the Strength and Initiative by -22.4% (enhanced by Intelligence) of 1 Enemy in the same lane for 5 round(s). Start of Round 6: Increase your Intelligence and Initiative by +22.4% for 5 round(s).",
+        "Start of Round 1: Reduce the Strength and Initiative by -27.2% (enhanced by Intelligence) of 1 Enemy in the same lane for 5 round(s). Start of Round 6: Increase your Intelligence and Initiative by +27.2% for 5 round(s).",
+        "Start of Round 1: Reduce the Strength and Initiative by -32% (enhanced by Intelligence) of 1 Enemy in the same lane for 5 round(s). Start of Round 6: Increase your Intelligence and Initiative by +32% for 5 round(s).",
+      ] },
+    // 4★
+    { short: [
+        "Damage Received +7.5% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion)",
+        "Damage Received +9% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion)",
+        "Damage Received +10.5% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion)",
+        "Damage Received +12.75% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion)",
+        "Damage Received +15% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion)",
+      ],
+      desc: [
+        "Start of Each Round: Increase the Damage Received by +7.5% of all enemies afflicted with a Control effect until the end of the round. Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Start of Each Round: Increase the Damage Received by +9% of all enemies afflicted with a Control effect until the end of the round. Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Start of Each Round: Increase the Damage Received by +10.5% of all enemies afflicted with a Control effect until the end of the round. Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Start of Each Round: Increase the Damage Received by +12.75% of all enemies afflicted with a Control effect until the end of the round. Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Start of Each Round: Increase the Damage Received by +15% of all enemies afflicted with a Control effect until the end of the round. Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+      ] },
+    // 6★
+    { short: [
+        "Increase Command chance to afflict Stagger (37.5% chance) (Odd rounds) | Fire Dmg +20% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion) (each round)",
+        "Increase Command chance to afflict Stagger (40% chance) (Odd rounds) | Fire Dmg +24% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion) (each round)",
+        "Increase Command chance to afflict Stagger (42.5% chance) (Odd rounds) | Fire Dmg +28% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion) (each round)",
+        "Increase Command chance to afflict Stagger (46.25% chance) (Odd rounds) | Fire Dmg +34% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion) (each round)",
+        "Increase Command chance to afflict Stagger (50% chance) (Odd rounds) | Fire Dmg +40% to Enemies w/ Control effects (Stun, Stagger, Overwhelm, Confusion) (each round)",
+      ],
+      desc: [
+        "Odd-numbered Rounds: Command increase chance to afflict Stagger to 37.5%. Stagger prevents the target from using Attack Modifier Commands or launching Basic Attacks. Each Round: Deal Fire Damage to all Enemies afflicted with a Control effect (Damage Rate: +20%). Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Odd-numbered Rounds: Command increase chance to afflict Stagger to 40%. Stagger prevents the target from using Attack Modifier Commands or launching Basic Attacks. Each Round: Deal Fire Damage to all Enemies afflicted with a Control effect (Damage Rate: +24%). Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Odd-numbered Rounds: Command increase chance to afflict Stagger to 42.5%. Stagger prevents the target from using Attack Modifier Commands or launching Basic Attacks. Each Round: Deal Fire Damage to all Enemies afflicted with a Control effect (Damage Rate: +28%). Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Odd-numbered Rounds: Command increase chance to afflict Stagger to 46.25%. Stagger prevents the target from using Attack Modifier Commands or launching Basic Attacks. Each Round: Deal Fire Damage to all Enemies afflicted with a Control effect (Damage Rate: +34%). Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+        "Odd-numbered Rounds: Command increase chance to afflict Stagger to 50%. Stagger prevents the target from using Attack Modifier Commands or launching Basic Attacks. Each Round: Deal Fire Damage to all Enemies afflicted with a Control effect (Damage Rate: +40%). Control effects include Stun, Stagger, Overwhelm, and Confusion.",
+      ] },
+    // 8★
+    { short: [
+        "Resistance -15% to Ally if Enemy Burned (17.5% chance) (2 rounds) (prioritizes Ally w/o Resistance)",
+        "Resistance -15% to Ally if Enemy Burned (21% chance) (2 rounds) (prioritizes Ally w/o Resistance)",
+        "Resistance -15% to Ally if Enemy Burned (24.5% chance) (2 rounds) (prioritizes Ally w/o Resistance)",
+        "Resistance -15% to Ally if Enemy Burned (29.75% chance) (2 rounds) (prioritizes Ally w/o Resistance)",
+        "Resistance -15% to Ally if Enemy Burned (35% chance) (2 rounds) (prioritizes Ally w/o Resistance)",
+      ],
+      desc: [
+        "Start of each Round: For each enemy afflicted with Burn, 17.5% chance to apply Resistance (+15%) to 1 Ally in any lane for 2 round(s) (prioritizes targets not already affected by Resistance). Resistance reduces the target's Damage Received.",
+        "Start of each Round: For each enemy afflicted with Burn, 21% chance to apply Resistance (+15%) to 1 Ally in any lane for 2 round(s) (prioritizes targets not already affected by Resistance). Resistance reduces the target's Damage Received.",
+        "Start of each Round: For each enemy afflicted with Burn, 24.5% chance to apply Resistance (+15%) to 1 Ally in any lane for 2 round(s) (prioritizes targets not already affected by Resistance). Resistance reduces the target's Damage Received.",
+        "Start of each Round: For each enemy afflicted with Burn, 29.75% chance to apply Resistance (+15%) to 1 Ally in any lane for 2 round(s) (prioritizes targets not already affected by Resistance). Resistance reduces the target's Damage Received.",
+        "Start of each Round: For each enemy afflicted with Burn, 35% chance to apply Resistance (+15%) to 1 Ally in any lane for 2 round(s) (prioritizes targets not already affected by Resistance). Resistance reduces the target's Damage Received.",
+      ] },
+    // 10★
+    { short: [
+        "Evade (5 rounds) | Fire Dmg +12% (5 rounds)",
+        "Evade (5 rounds) | Fire Dmg +15.6% (5 rounds)",
+        "Evade (5 rounds) | Fire Dmg +19.2% (5 rounds)",
+        "Evade (5 rounds) | Fire Dmg +24% (5 rounds)",
+        "Evade (5 rounds) | Fire Dmg +30% (5 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Grant yourself Evade for 5 round(s). Evade causes each instance of damage against the target to have a chance to be ignored. Start of Round 6: Increase your Fire Damage Dealt by +12% for 5 round(s).",
+        "Start of Round 1: Grant yourself Evade for 5 round(s). Evade causes each instance of damage against the target to have a chance to be ignored. Start of Round 6: Increase your Fire Damage Dealt by +15.6% for 5 round(s).",
+        "Start of Round 1: Grant yourself Evade for 5 round(s). Evade causes each instance of damage against the target to have a chance to be ignored. Start of Round 6: Increase your Fire Damage Dealt by +19.2% for 5 round(s).",
+        "Start of Round 1: Grant yourself Evade for 5 round(s). Evade causes each instance of damage against the target to have a chance to be ignored. Start of Round 6: Increase your Fire Damage Dealt by +24% for 5 round(s).",
+        "Start of Round 1: Grant yourself Evade for 5 round(s). Evade causes each instance of damage against the target to have a chance to be ignored. Start of Round 6: Increase your Fire Damage Dealt by +30% for 5 round(s).",
+      ] },
+  ],
+  Starshower: [
+    // 2★
+    { short: [
+        "Cleanse 1 Negative effect from 2 Allies (15% chance) and grant Evade +10% (1 round)",
+        "Cleanse 1 Negative effect from 2 Allies (18% chance) and grant Evade +10% (1 round)",
+        "Cleanse 1 Negative effect from 2 Allies (21% chance) and grant Evade +10% (1 round)",
+        "Cleanse 1 Negative effect from 2 Allies (25.5% chance) and grant Evade +10% (1 round)",
+        "Cleanse 1 Negative effect from 2 Allies (30% chance) and grant Evade +10% (1 round)",
+      ],
+      desc: [
+        "Each Round: 15% chance to Cleanse 1 Negative effect from 2 Allies in any lane and grant them Evade (Rate: 10%) for 1 round(s). Evade causes each instance of damage against the target to have a chance to be ignored.",
+        "Each Round: 18% chance to Cleanse 1 Negative effect from 2 Allies in any lane and grant them Evade (Rate: 10%) for 1 round(s). Evade causes each instance of damage against the target to have a chance to be ignored.",
+        "Each Round: 21% chance to Cleanse 1 Negative effect from 2 Allies in any lane and grant them Evade (Rate: 10%) for 1 round(s). Evade causes each instance of damage against the target to have a chance to be ignored.",
+        "Each Round: 25.5% chance to Cleanse 1 Negative effect from 2 Allies in any lane and grant them Evade (Rate: 10%) for 1 round(s). Evade causes each instance of damage against the target to have a chance to be ignored.",
+        "Each Round: 30% chance to Cleanse 1 Negative effect from 2 Allies in any lane and grant them Evade (Rate: 10%) for 1 round(s). Evade causes each instance of damage against the target to have a chance to be ignored.",
+      ] },
+    // 4★
+    { short: [
+        "Intelligence & Initiative -5% to 3 Enemies",
+        "Intelligence & Initiative -7% to 3 Enemies",
+        "Intelligence & Initiative -9% to 3 Enemies",
+        "Intelligence & Initiative -12% to 3 Enemies",
+        "Intelligence & Initiative -15% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce the Intelligence and Initiative (enhanced by Instinct) of 3 Enemies in any lane by +5% until the end of combat.",
+        "Start of Combat: Reduce the Intelligence and Initiative (enhanced by Instinct) of 3 Enemies in any lane by +6% until the end of combat.",
+        "Start of Combat: Reduce the Intelligence and Initiative (enhanced by Instinct) of 3 Enemies in any lane by +7% until the end of combat.",
+        "Start of Combat: Reduce the Intelligence and Initiative (enhanced by Instinct) of 3 Enemies in any lane by +8.85% until the end of combat.",
+        "Start of Combat: Reduce the Intelligence and Initiative (enhanced by Instinct) of 3 Enemies in any lane by +10.5% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command gains: Tactical Dmg +130% to 1 Enemy w/ Solar Flare (each round) | Mark Solar Flare to 3 Enemies (once per combat) (rounds 6-10)",
+        "Command gains: Tactical Dmg +144% to 1 Enemy w/ Solar Flare (each round) | Mark Solar Flare to 3 Enemies (once per combat) (rounds 6-10)",
+        "Command gains: Tactical Dmg +158% to 1 Enemy w/ Solar Flare (each round) | Mark Solar Flare to 3 Enemies (once per combat) (rounds 6-10)",
+        "Command gains: Tactical Dmg +179% to 1 Enemy w/ Solar Flare (each round) | Mark Solar Flare to 3 Enemies (once per combat) (rounds 6-10)",
+        "Command gains: Tactical Dmg +200% to 1 Enemy w/ Solar Flare (each round) | Mark Solar Flare to 3 Enemies (once per combat) (rounds 6-10)",
+      ],
+      desc: [
+        "Starfall gains: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +130%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat.",
+        "Starfall gains: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +144%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat.",
+        "Starfall gains: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +158%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat.",
+        "Starfall gains: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +179%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat.",
+        "Starfall gains: Each Round: Increase the Tactical Damage dealt when consuming Solar Flare to +200%. Rounds 6-10: If no Enemy has Solar Flare, mark 3 Enemies in any lane with Solar Flare. This effect can only trigger once per combat.",
+      ] },
+    // 8★
+    { short: [
+        "Tactical Dmg +10% to 1 Enemy (same lane)",
+        "Tactical Dmg +12% to 1 Enemy (same lane)",
+        "Tactical Dmg +14% to 1 Enemy (same lane)",
+        "Tactical Dmg +17% to 1 Enemy (same lane)",
+        "Tactical Dmg +20% to 1 Enemy (same lane)",
+      ],
+      desc: [
+        "Start of Combat: Increase the Tactical Damage Received by +10% of 1 Enemy in the same lane until the end of combat.",
+        "Start of Combat: Increase the Tactical Damage Received by +12% of 1 Enemy in the same lane until the end of combat.",
+        "Start of Combat: Increase the Tactical Damage Received by +14% of 1 Enemy in the same lane until the end of combat.",
+        "Start of Combat: Increase the Tactical Damage Received by +17% of 1 Enemy in the same lane until the end of combat.",
+        "Start of Combat: Increase the Tactical Damage Received by +20% of 1 Enemy in the same lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Reduce Dmg Received -6% to 2 Allies (adjacency) (1 round) | If Resistance: +9% | If Advantage: 3 Allies (any lane)",
+        "Reduce Dmg Received -7.8% to 2 Allies (adjacency) (1 round) | If Resistance: +11.7% | If Advantage: 3 Allies (any lane)",
+        "Reduce Dmg Received -9.6% to 2 Allies (adjacency) (1 round) | If Resistance: +14.4% | If Advantage: 3 Allies (any lane)",
+        "Reduce Dmg Received -12% to 2 Allies (adjacency) (1 round) | If Resistance: +18% | If Advantage: 3 Allies (any lane)",
+        "Reduce Dmg Received -15% to 2 Allies (adjacency) (1 round) | If Resistance: +22.5% | If Advantage: 3 Allies (any lane)",
+      ],
+      desc: [
+        "Starfall gains: When you consume a Solar Flare mark: Reduce the Damage Received by -6% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+9%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+        "Starfall gains: When you consume a Solar Flare mark: Reduce the Damage Received by -7.8% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+11.7%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+        "Starfall gains: When you consume a Solar Flare mark: Reduce the Damage Received by -9.6% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+14.4%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+        "Starfall gains: When you consume a Solar Flare mark: Reduce the Damage Received by -12% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+18%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+        "Starfall gains: When you consume a Solar Flare mark: Reduce the Damage Received by -15% of 2 Allies within adjacency for 1 round(s). If you have Resistance, increase this effect by 1.5x (+22.5%). If you have Advantage, this effect instead applies to 3 Allies in any lane.",
+      ] },
+  ],
+  // ---- Rare ----
+  Solstryker: [
+    // 2★
+    { short: [
+        "Strength -2% per-stack (Max 10) to 3 Enemies",
+        "Strength -2.4% per-stack (Max 10) to 3 Enemies",
+        "Strength -2.8% per-stack (Max 10) to 3 Enemies",
+        "Strength -3.4% per-stack (Max 10) to 3 Enemies",
+        "Strength -4% per-stack (Max 10) to 3 Enemies",
+      ],
+      desc: [
+        "Each Round: Add 1 Stack of Steady Erosion (Max 10 Stacks) to all Enemies. Each stack of Steady Erosion reduces the targets Strength by -2% until the end of combat.",
+        "Each Round: Add 1 Stack of Steady Erosion (Max 10 Stacks) to all Enemies. Each stack of Steady Erosion reduces the targets Strength by -2.4% until the end of combat.",
+        "Each Round: Add 1 Stack of Steady Erosion (Max 10 Stacks) to all Enemies. Each stack of Steady Erosion reduces the targets Strength by -2.8% until the end of combat.",
+        "Each Round: Add 1 Stack of Steady Erosion (Max 10 Stacks) to all Enemies. Each stack of Steady Erosion reduces the targets Strength by -3.4% until the end of combat.",
+        "Each Round: Add 1 Stack of Steady Erosion (Max 10 Stacks) to all Enemies. Each stack of Steady Erosion reduces the targets Strength by -4% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Strength & Initiative -15% to 2 Enemies adjacency (3 rounds)",
+        "Strength & Initiative -18% to 2 Enemies adjacency (3 rounds)",
+        "Strength & Initiative -21% to 2 Enemies adjacency (3 rounds)",
+        "Strength & Initiative -25.5% to 2 Enemies adjacency (3 rounds)",
+        "Strength & Initiative -30% to 2 Enemies adjacency (3 rounds)",
+      ],
+      desc: [
+        "Round 1: Reduce Strength and Initiative by -15% of 2 Enemies within adjacency (enhanced by Instinct) for 3 rounds.",
+        "Round 1: Reduce Strength and Intelligence by -18% of 2 Enemies within adjacency (enhanced by Instinct) for 3 rounds.",
+        "Round 1: Reduce Strength and Intelligence by -21% of 2 Enemies within adjacency (enhanced by Instinct) for 3 rounds.",
+        "Round 1: Reduce Strength and Intelligence by -25.5% of 2 Enemies within adjacency (enhanced by Instinct) for 3 rounds.",
+        "Round 1: Reduce Strength and Intelligence by -30% of 2 Enemies within adjacency (enhanced by Instinct) for 3 rounds.",
+      ] },
+    // 6★
+    { short: [
+        "Overwhelm 1 Enemy (10% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (12% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (14% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (17% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (20% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to afflict Overwhelm on 1 Enemy in any lane for 2 rounds.",
+        "Each Round: 12% chance to afflict Overwhelm on 1 Enemy in any lane for 2 rounds.",
+        "Each Round: 14% chance to afflict Overwhelm on 1 Enemy in any lane for 2 rounds.",
+        "Each Round: 17% chance to afflict Overwhelm on 1 Enemy in any lane for 2 rounds.",
+        "Each Round: 20% chance to afflict Overwhelm on 1 Enemy in any lane for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Strength & Instinct +12.5%",
+        "Strength & Instinct +15%",
+        "Strength & Instinct +17.5%",
+        "Strength & Instinct +21.25%",
+        "Strength & Instinct +25%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Strength and Instinct by +12.5% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +15% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +17.5% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +21.25% until the end of combat.",
+        "Start of Combat: Increase your Strength and Instinct by +25% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Strength & Initiative -15% to 2 Enemies adjacency (5 rounds)",
+        "Strength & Initiative -19.5% to 2 Enemies adjacency (5 rounds)",
+        "Strength & Initiative -24% to 2 Enemies adjacency (5 rounds)",
+        "Strength & Initiative -30% to 2 Enemies adjacency (5 rounds)",
+        "Strength & Initiative -37.5% to 2 Enemies adjacency (5 rounds)",
+      ],
+      desc: [
+        "Round 4: Reduce Strength and Initiative by -15% of 2 Enemies within adjacency (enhanced by Instinct) for 5 rounds.",
+        "Round 4: Reduce Strength and Initiative by -19.5% of 2 Enemies within adjacency (enhanced by Instinct) for 5 rounds.",
+        "Round 4: Reduce Strength and Initiative by -24% of 2 Enemies within adjacency (enhanced by Instinct) for 5 rounds.",
+        "Round 4: Reduce Strength and Initiative by -30% of 2 Enemies within adjacency (enhanced by Instinct) for 5 rounds.",
+        "Round 4: Reduce Strength and Initiative by -37.5% of 2 Enemies within adjacency (enhanced by Instinct) for 5 rounds.",
+      ] },
+  ],
+  Antares: [
+    // 2★
+    { short: [
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received 1 Enemy (Right Flank/others) by +11% to 2 Enemies (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received 1 Enemy (Right Flank/others) by +13.2% to 2 Enemies (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received 1 Enemy (Right Flank/others) by +15.4% to 4 Enemies (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received 1 Enemy (Right Flank/others) by +18.7% to 2 Enemies (3 rounds)",
+        "Fire Dmg Received to 1 Enemy (Left Flank/others) & Physical Dmg Received 1 Enemy (Right Flank/others) by +22% to 2 Enemies (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +11% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +13.2% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +15.4% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +18.7% for 3 rounds.",
+        "Start of Round 1: Increase Fire Damage Received of 1 Enemy in any lane (prioritizes the Left Flank) and Physical Damage Received (Command & Habits) of 1 Enemy in any lane (prioritizes the Right Flank) by +22% for 3 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Fire Dmg +8%",
+        "Fire Dmg +9.6%",
+        "Fire Dmg +11.2%",
+        "Fire Dmg +13.6%",
+        "Fire Dmg +16%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Fire Damage Dealt by +8% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +9.6% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +11.2% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +13.6% until the end of combat.",
+        "Start of Combat: Increase your Fire Damage Dealt by +16% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Command Fire Dmg +20% to 3 Enemies w/ Slow",
+        "Command Fire Dmg +24% to 3 Enemies w/ Slow",
+        "Command Fire Dmg +28% to 3 Enemies w/ Slow",
+        "Command Fire Dmg +34% to 3 Enemies w/ Slow",
+        "Command Fire Dmg +40% to 3 Enemies w/ Slow",
+      ],
+      desc: [
+        "Each Round: Command deal Fire Damage to 3 Enemies in any lane afflicted with Slow (Damage Rate: +20%).",
+        "Each Round: Command deal Fire Damage to 3 Enemies in any lane afflicted with Slow (Damage Rate: +24%).",
+        "Each Round: Command deal Fire Damage to 3 Enemies in any lane afflicted with Slow (Damage Rate: +28%).",
+        "Each Round: Command deal Fire Damage to 3 Enemies in any lane afflicted with Slow (Damage Rate: +34%).",
+        "Each Round: Command deal Fire Damage to 3 Enemies in any lane afflicted with Slow (Damage Rate: +40%).",
+      ] },
+    // 8★
+    { short: [
+        "Dmg Received -4% | Intelligence +5%",
+        "Dmg Received -4.8% | Intelligence +6%",
+        "Dmg Received -5.6% | Intelligence +7%",
+        "Dmg Received -6.8% | Intelligence +8.5%",
+        "Dmg Received -8% | Intelligence +10%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -4% and increase your Intelligence by +5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -4.8% and increase your Intelligence by +6% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -5.6% and increase your Intelligence by +7% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6.8% and increase your Intelligence by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8% and increase your Intelligence by +10% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Intelligence & Initiative +6% | Immunity to Vulnerable & Weakened (10% chance) (2 rounds)",
+        "Intelligence & Initiative +7.8% | Immunity to Vulnerable & Weakened (13% chance) (2 rounds)",
+        "Intelligence & Initiative +9.6% | Immunity to Vulnerable & Weakened (16% chance) (2 rounds)",
+        "Intelligence & Initiative +12% | Immunity to Vulnerable & Weakened (20% chance) (2 rounds)",
+        "Intelligence & Initiative +15% | Immunity to Vulnerable & Weakened (25% chance) (2 rounds)",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence and Initiative by +6% until the end of combat. Each Round: 10% chance to grant yourself Immunity to both Vulnerable and Weakened for 2 rounds.",
+        "Start of Combat: Increase your Intelligence and Initiative by +7.8% until the end of combat. Each Round: 13% chance to grant yourself Immunity to both Vulnerable and Weakened for 2 rounds.",
+        "Start of Combat: Increase your Intelligence and Initiative by +9.6% until the end of combat. Each Round: 16% chance to grant yourself Immunity to both Vulnerable and Weakened for 2 rounds.",
+        "Start of Combat: Increase your Intelligence and Initiative by +12% until the end of combat. Each Round: 20% chance to grant yourself Immunity to both Vulnerable and Weakened for 2 rounds.",
+        "Start of Combat: Increase your Intelligence and Initiative by +15% until the end of combat. Each Round: 25% chance to grant yourself Immunity to both Vulnerable and Weakened for 2 rounds.",
+      ] },
+  ],
+  Shimmer: [
+    // 2★
+    { short: [
+        "Physical Dmg (Command & Habits) to Ally (Left Flank/other) & Tactical Dmg to Ally (Right Flank/other) by +9% (3 rounds)",
+        "Physical Dmg (Command & Habits) to Ally (Left Flank/other) & Tactical Dmg to Ally (Right Flank/other) by +10.8% (3 rounds)",
+        "Physical Dmg (Command & Habits) to Ally (Left Flank/other) & Tactical Dmg to Ally (Right Flank/other) by +12.6% (3 rounds)",
+        "Physical Dmg (Command & Habits) to Ally (Left Flank/other) & Tactical Dmg to Ally (Right Flank/other) by +15.3% (3 rounds)",
+        "Physical Dmg (Command & Habits) to Ally (Left Flank/other) & Tactical Dmg to Ally (Right Flank/other) by +18% (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Left Flank) and the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +9% for 3 rounds.",
+        "Start of Round 1: Increase the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Left Flank) and the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +10.8% for 3 rounds.",
+        "Start of Round 1: Increase the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Left Flank) and the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +12.6% for 3 rounds.",
+        "Start of Round 1: Increase the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Left Flank) and the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +15.3% for 3 rounds.",
+        "Start of Round 1: Increase the Physical Damage Dealt (Command & Habits) of 1 Ally in any lane (prioritizes the Left Flank) and the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +18% for 3 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Received -4% | Instinct +5%",
+        "Dmg Received -4.8% | Instinct +6%",
+        "Dmg Received -5.6% | Instinct +7%",
+        "Dmg Received -6.8% | Instinct +8.5%",
+        "Dmg Received -8% | Instinct +10%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -4% and increase your Instinct by +5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -4.8% and increase your Instinct by +6% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -5.6% and increase your Instinct by +7% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6.8% and increase your Instinct by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8% and increase your Instinct by +10% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Recovery (+30% or 60% w/ Resistance) to 2 Allies",
+        "Recovery (+36% or 72% w/ Resistance) to 2 Allies",
+        "Recovery (+42% or 84% w/ Resistance) to 2 Allies",
+        "Recovery (+51% or 102% w/ Resistance) to 2 Allies",
+        "Recovery (+60% or 120% w/ Resistance) to 2 Allies",
+      ],
+      desc: [
+        "Rounds 2,4,7,9: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +30%, enhanced by Instinct). The amount of Recovery is doubled if the target has Resistance (Recovery Rate: +60%).",
+        "Rounds 2,4,7,9: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +36%, enhanced by Instinct). The amount of Recovery is doubled if the target has Resistance (Recovery Rate: +72%).",
+        "Rounds 2,4,7,9: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +42%, enhanced by Instinct). The amount of Recovery is doubled if the target has Resistance (Recovery Rate: +84%).",
+        "Rounds 2,4,7,9: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +51%, enhanced by Instinct). The amount of Recovery is doubled if the target has Resistance (Recovery Rate: +102%).",
+        "Rounds 2,4,7,9: Command apply Recovery to 2 other Allies in any lane (Recovery Rate: +60%, enhanced by Instinct). The amount of Recovery is doubled if the target has Resistance (Recovery Rate: +120%).",
+      ] },
+    // 8★
+    { short: [
+        "Recovery Received +15% to 2 Allies",
+        "Recovery Received +18% to 2 Allies",
+        "Recovery Received +21% to 2 Allies",
+        "Recovery Received +25.5% to 2 Allies",
+        "Recovery Received +30% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Recovery Received by +15% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +18% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +21% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +25.5% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +30% of 2 other Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg +10% & First-Strike to Ally (highest Strength) (14% chance) (2 rounds)",
+        "Physical Dmg +10% & First-Strike to Ally (highest Strength) (18.2% chance) (2 rounds)",
+        "Physical Dmg +10% & First-Strike to Ally (highest Strength) (22.4% chance) (2 rounds)",
+        "Physical Dmg +10% & First-Strike to Ally (highest Strength) (28% chance) (2 rounds)",
+        "Physical Dmg +10% & First-Strike to Ally (highest Strength) (35% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 14% chance to increase Physical Damage Dealt by +10% and grant First-Strike to the other Ally with the highest Strength for 2 rounds. First-Strike causes the target to attack before all other combatants each round.",
+        "Each Round: 18.2% chance to increase Physical Damage Dealt by +10% and grant First-Strike to the other Ally with the highest Strength for 2 rounds. First-Strike causes the target to attack before all other combatants each round.",
+        "Each Round: 22.4% chance to increase Physical Damage Dealt by +10% and grant First-Strike to the other Ally with the highest Strength for 2 rounds. First-Strike causes the target to attack before all other combatants each round.",
+        "Each Round: 28% chance to increase Physical Damage Dealt by +10% and grant First-Strike to the other Ally with the highest Strength for 2 rounds. First-Strike causes the target to attack before all other combatants each round.",
+        "Each Round: 35% chance to increase Physical Damage Dealt by +10% and grant First-Strike to the other Ally with the highest Strength for 2 rounds. First-Strike causes the target to attack before all other combatants each round.",
+      ] },
+  ],
+  Jagadrix: [
+    // 2★
+    { short: [
+        "Tactical Dmg -8% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -9.6% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -11.2% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -13.6% to 1 Enemy w/ Tactical Dmg",
+        "Tactical Dmg -16% to 1 Enemy w/ Tactical Dmg",
+      ],
+      desc: [
+        "Start of Combat: Reduce Tactical Damage Dealt by -8% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -9.6% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -11.2% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -13.6% of 1 Enemy that deals Tactical Damage until the end of combat.",
+        "Start of Combat: Reduce Tactical Damage Dealt by -16% of 1 Enemy that deals Tactical Damage until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Dealt +10% | Recovery +150%",
+        "Dmg Dealt +12% | Recovery +180%",
+        "Dmg Dealt +14% | Recovery +210%",
+        "Dmg Dealt +17% | Recovery +255%",
+        "Dmg Dealt +20% | Recovery +300%",
+      ],
+      desc: [
+        "Round 6: Increase your Damage Dealt by +10% until the end of combat. Additionally, apply Recovery (Recovery Rate: +150%) to yourself. Then, afflict yourself with Nullify Recovery until the end of combat. Nullify Recovery prevents the target from receiving Recovery.",
+        "Round 6: Increase your Damage Dealt by +12% until the end of combat. Additionally, apply Recovery (Recovery Rate: +180%) to yourself. Then, afflict yourself with Nullify Recovery until the end of combat. Nullify Recovery prevents the target from receiving Recovery.",
+        "Round 6: Increase your Damage Dealt by +14% until the end of combat. Additionally, apply Recovery (Recovery Rate: +210%) to yourself. Then, afflict yourself with Nullify Recovery until the end of combat. Nullify Recovery prevents the target from receiving Recovery.",
+        "Round 6: Increase your Damage Dealt by +17% until the end of combat. Additionally, apply Recovery (Recovery Rate: +255%) to yourself. Then, afflict yourself with Nullify Recovery until the end of combat. Nullify Recovery prevents the target from receiving Recovery.",
+        "Round 6: Increase your Damage Dealt by +20% until the end of combat. Additionally, apply Recovery (Recovery Rate: +300%) to yourself. Then, afflict yourself with Nullify Recovery until the end of combat. Nullify Recovery prevents the target from receiving Recovery.",
+      ] },
+    // 6★
+    { short: [
+        "Weakened -10% to 1 Enemy (same lane) (25% chance) (2 rounds)",
+        "Weakened -10% to 1 Enemy (same lane) (30% chance) (2 rounds)",
+        "Weakened -10% to 1 Enemy (same lane) (35% chance) (2 rounds)",
+        "Weakened -10% to 1 Enemy (same lane) (42.5% chance) (2 rounds)",
+        "Weakened -10% to 1 Enemy (same lane) (50% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 25% chance to afflict 1 Enemy with Weakened (-10%) in the same lane for 2 rounds.",
+        "Each Round: 30% chance to afflict 1 Enemy with Weakened (-10%) in the same lane for 2 rounds.",
+        "Each Round: 35% chance to afflict 1 Enemy with Weakened (-10%) in the same lane for 2 rounds.",
+        "Each Round: 42.5% chance to afflict 1 Enemy with Weakened (-10%) in the same lane for 2 rounds.",
+        "Each Round: 50% chance to afflict 1 Enemy with Weakened (-10%) in the same lane for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Intelligence & Initiative +12.5%",
+        "Intelligence & Initiative +15%",
+        "Intelligence & Initiative +17.5%",
+        "Intelligence & Initiative +21.25%",
+        "Intelligence & Initiative +25%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Intelligence and Initiative by +12.5% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +15% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +17.5% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +21.25% until the end of combat.",
+        "Start of Combat: Increase your Intelligence and Initiative by +25% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Instinct & Initiative -6% to Enemy (highest Instinct) | Fire Dmg (+30% or +60% w/ Panic) to Enemies w/ Tactical Dmg",
+        "Instinct & Initiative -8% to Enemy (highest Instinct) | Fire Dmg (+39% or +78% w/ Panic) to Enemies w/ Tactical Dmg",
+        "Instinct & Initiative -10% to Enemy (highest Instinct) | Fire Dmg (+48% or +96% w/ Panic) to Enemies w/ Tactical Dmg",
+        "Instinct & Initiative -12% to Enemy (highest Instinct) | Fire Dmg (+60% or +120% w/ Panic) to Enemies w/ Tactical Dmg",
+        "Instinct & Initiative -15% to Enemy (highest Instinct) | Fire Dmg (+75% or +150% w/ Panic) to Enemies w/ Tactical Dmg",
+      ],
+      desc: [
+        "Round 1: Command reduce the Instinct and Initiative by -6% (enhanced by Initiative) of the Enemy with the highest Instinct until the end of combat. Rounds 3,6,9: Command deal Fire Damage to all Enemies that deal Tactical Damage (Damage Rate: +30%). This damage is doubled if the target is afflicted with Panic.",
+        "Round 1: Command reduce the Instinct and Initiative by -7.8% (enhanced by Initiative) of the Enemy with the highest Instinct until the end of combat. Rounds 3,6,9: Command deal Fire Damage to all Enemies that deal Tactical Damage (Damage Rate: +39%). This damage is doubled if the target is afflicted with Panic.",
+        "Round 1: Command reduce the Instinct and Initiative by -9.6% (enhanced by Initiative) of the Enemy with the highest Instinct until the end of combat. Rounds 3,6,9: Command deal Fire Damage to all Enemies that deal Tactical Damage (Damage Rate: +48%). This damage is doubled if the target is afflicted with Panic.",
+        "Round 1: Command reduce the Instinct and Initiative by -12% (enhanced by Initiative) of the Enemy with the highest Instinct until the end of combat. Rounds 3,6,9: Command deal Fire Damage to all Enemies that deal Tactical Damage (Damage Rate: +60%). This damage is doubled if the target is afflicted with Panic.",
+        "Round 1: Command reduce the Instinct and Initiative by -15% (enhanced by Initiative) of the Enemy with the highest Instinct until the end of combat. Rounds 3,6,9: Command deal Fire Damage to all Enemies that deal Tactical Damage (Damage Rate: +75%). This damage is doubled if the target is afflicted with Panic.",
+      ] },
+  ],
+  Bevlorin: [
+    // 2★
+    { short: [
+        "Fire Dmg (Command & Habits) Received -5% yourself & 1 Ally adjacency (Doubled to yourself if Ally retreated)",
+        "Fire Dmg (Command & Habits) Received -6% yourself & 1 Ally adjacency (Doubled to yourself if Ally retreated)",
+        "Fire Dmg (Command & Habits) Received -7% yourself & 1 Ally adjacency (Doubled to yourself if Ally retreated)",
+        "Fire Dmg (Command & Habits) Received -8.5% yourself & 1 Ally adjacency (Doubled to yourself if Ally retreated)",
+        "Fire Dmg (Command & Habits) Received -10% yourself & 1 Ally adjacency (Doubled to yourself if Ally retreated)",
+      ],
+      desc: [
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each Stack of Fire Ward reduces the targets Fire Damage (Command & Habits) Received by -5% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each Stack of Fire Ward reduces the targets Fire Damage (Command & Habits) Received by -6% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each Stack of Fire Ward reduces the targets Fire Damage (Command & Habits) Received by -7% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each Stack of Fire Ward reduces the targets Fire Damage (Command & Habits) Received by -8.5% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. Each Round: If the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each Stack of Fire Ward reduces the targets Fire Damage (Command & Habits) Received by -10% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Physical (Command & Habits) & Fire Dmg +4%",
+        "Physical (Command & Habits) & Fire Dmg +4.8%",
+        "Physical (Command & Habits) & Fire Dmg +5.6%",
+        "Physical (Command & Habits) & Fire Dmg +6.8%",
+        "Physical (Command & Habits) & Fire Dmg +8%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Physical Damage (Command & Habits) and Fire Damage Dealt by +4% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) and Fire Damage Dealt by +4.8% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) and Fire Damage Dealt by +5.6% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) and Fire Damage Dealt by +6.8% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) and Fire Damage Dealt by +8% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Recovery +17.5% to 3 Allies",
+        "Recovery +21% to 3 Allies",
+        "Recovery +24.5% to 3 Allies",
+        "Recovery +29.75% to 3 Allies",
+        "Recovery +35% to 3 Allies",
+      ],
+      desc: [
+        "Odd-numbered rounds: Command apply Recovery (enhanced by Strength) to 3 Allies in any lane (Recovery Rate: +17.5%).",
+        "Odd-numbered rounds: Command apply Recovery (enhanced by Strength) to 3 Allies in any lane (Recovery Rate: +21%).",
+        "Odd-numbered rounds: Command apply Recovery (enhanced by Strength) to 3 Allies in any lane (Recovery Rate: +24.5%).",
+        "Odd-numbered rounds: Command apply Recovery (enhanced by Strength) to 3 Allies in any lane (Recovery Rate: +29.75%).",
+        "Odd-numbered rounds: Command apply Recovery (enhanced by Strength) to 3 Allies in any lane (Recovery Rate: +35%).",
+      ] },
+    // 8★
+    { short: [
+        "Strength +10% & Recovery +15%",
+        "Strength +12% & Recovery +18%",
+        "Strength +14% & Recovery +21%",
+        "Strength +17% & Recovery +25.5%",
+        "Strength +20% & Recovery +30%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Strength by +10% and your Recovery Dealt by +15% until the end of combat.",
+        "Start of Combat: Increase your Strength by +12% and your Recovery Dealt by +18% until the end of combat.",
+        "Start of Combat: Increase your Strength by +14% and your Recovery Dealt by +21% until the end of combat.",
+        "Start of Combat: Increase your Strength by +17% and your Recovery Dealt by +25.5% until the end of combat.",
+        "Start of Combat: Increase your Strength by +20% and your Recovery Dealt by +30% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "+16% stat to highest stat Allies (20% chance) (2 rounds)",
+        "+20.8% stat to highest stat Allies (20% chance) (2 rounds)",
+        "+25.6% stat to highest stat Allies (20% chance) (2 rounds)",
+        "+32% stat to highest stat Allies (20% chance) (2 rounds)",
+        "+40% stat to highest stat Allies (20% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 20% chance to increase Strength of Ally with highest Strength, Intelligence of Ally with highest Intelligence, Instinct of Ally with highest Instinct, Initiative of Ally with highest Initiative by +16% for 2 rounds. The chance is checked separately per target.",
+        "Each Round: 20% chance to increase Strength of Ally with highest Strength, Intelligence of Ally with highest Intelligence, Instinct of Ally with highest Instinct, Initiative of Ally with highest Initiative by +20.8% for 2 rounds. The chance is checked separately per target.",
+        "Each Round: 20% chance to increase Strength of Ally with highest Strength, Intelligence of Ally with highest Intelligence, Instinct of Ally with highest Instinct, Initiative of Ally with highest Initiative by +25.6% for 2 rounds. The chance is checked separately per target.",
+        "Each Round: 20% chance to increase Strength of Ally with highest Strength, Intelligence of Ally with highest Intelligence, Instinct of Ally with highest Instinct, Initiative of Ally with highest Initiative by +32% for 2 rounds. The chance is checked separately per target.",
+        "Each Round: 20% chance to increase Strength of Ally with highest Strength, Intelligence of Ally with highest Intelligence, Instinct of Ally with highest Instinct, Initiative of Ally with highest Initiative by +40% for 2 rounds. The chance is checked separately per target.",
+      ] },
+  ],
+  Shadowrend: [
+    // 2★
+    { short: [
+        "Strength & Instinct +40% to 3 Allies (Rounds 7-10)",
+        "Strength & Instinct +48% to 3 Allies (Rounds 7-10)",
+        "Strength & Instinct +56% to 3 Allies (Rounds 7-10)",
+        "Strength & Instinct +68% to 3 Allies (Rounds 7-10)",
+        "Strength & Instinct +80% to 3 Allies (Rounds 7-10)",
+      ],
+      desc: [
+        "Start of Rounds 7-10: Increase Strength, and Instinct by +40% (enhanced by Initiative) of 3 Allies in any lane until the end of the round.",
+        "Start of Rounds 7-10: Increase Strength, and Instinct by +48% (enhanced by Initiative) of 3 Allies in any lane until the end of the round.",
+        "Start of Rounds 7-10: Increase Strength, and Instinct by +56% (enhanced by Initiative) of 3 Allies in any lane until the end of the round.",
+        "Start of Rounds 7-10: Increase Strength, and Instinct by +68% (enhanced by Initiative) of 3 Allies in any lane until the end of the round.",
+        "Start of Rounds 7-10: Increase Strength, and Instinct by +80% (enhanced by Initiative) of 3 Allies in any lane until the end of the round.",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Received -4% | Initiative +5%",
+        "Dmg Received -4.8% | Initiative +6%",
+        "Dmg Received -5.6% | Initiative +7%",
+        "Dmg Received -6.8% | Initiative +8.5%",
+        "Dmg Received -8% | Initiative +10%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -4% and increase your Initiative by +5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -4.8% and increase your Initiative by +6% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -5.6% and increase your Initiative by +7% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6.8% and increase your Initiative by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8% and increase your Initiative by +10% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Advantage +10% to 2 Allies (10% or 20% chance w/ Habit 1) (2 rounds)",
+        "Advantage +10% to 2 Allies (12% or 24% chance w/ Habit 1) (2 rounds)",
+        "Advantage +10% to 2 Allies (14% or 28% chance w/ Habit 1) (2 rounds)",
+        "Advantage +10% to 2 Allies (17% or 34% chance w/ Habit 1) (2 rounds)",
+        "Advantage +10% to 2 Allies (20% or 40% chance w/ Habit 1) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 10% chance to grant Advantage (+10%) to 2 Allies in any lane for 2 rounds. This chance is doubled (20%) when Habit 1 is active (Rounds 7-10).",
+        "Each Round: 12% chance to grant Advantage (+10%) to 2 Allies in any lane for 2 rounds. This chance is doubled (24%) when Habit 1 is active (Rounds 7-10).",
+        "Each Round: 14% chance to grant Advantage (+10%) to 2 Allies in any lane for 2 rounds. This chance is doubled (28%) when Habit 1 is active (Rounds 7-10).",
+        "Each Round: 17% chance to grant Advantage (+10%) to 2 Allies in any lane for 2 rounds. This chance is doubled (34%) when Habit 1 is active (Rounds 7-10).",
+        "Each Round: 20% chance to grant Advantage (+10%) to 2 Allies in any lane for 2 rounds. This chance is doubled (40%) when Habit 1 is active (Rounds 7-10).",
+      ] },
+    // 8★
+    { short: [
+        "Physical & Tactical Dmg +7% to 3 Allies (Rounds 7-10)",
+        "Physical & Tactical Dmg +8.4% to 3 Allies (Rounds 7-10)",
+        "Physical & Tactical Dmg +9.8% to 3 Allies (Rounds 7-10)",
+        "Physical & Tactical Dmg +11.9% to 3 Allies (Rounds 7-10)",
+        "Physical & Tactical Dmg +14% to 3 Allies (Rounds 7-10)",
+      ],
+      desc: [
+        "Start of Round 7-10: Increase the Physical and Tactical Damage Dealt by +7% of 3 Allies in any lane until the end of round.",
+        "Start of Round 7-10: Increase the Physical and Tactical Damage Dealt by +8.4% of 3 Allies in any lane until the end of round.",
+        "Start of Round 7-10: Increase the Physical and Tactical Damage Dealt by +9.8% of 3 Allies in any lane until the end of round.",
+        "Start of Round 7-10: Increase the Physical and Tactical Damage Dealt by +11.9% of 3 Allies in any lane until the end of round.",
+        "Start of Round 7-10: Increase the Physical and Tactical Damage Dealt by +14% of 3 Allies in any lane until the end of round.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg +100% | Tactical Dmg +100% to 3 Enemies (Round 9)",
+        "Physical Dmg +130% | Tactical Dmg +130% to 3 Enemies (Round 9)",
+        "Physical Dmg +160% | Tactical Dmg +160% to 3 Enemies (Round 9)",
+        "Physical Dmg +200% | Tactical Dmg +200% to 3 Enemies (Round 9)",
+        "Physical Dmg +250% | Tactical Dmg +250% to 3 Enemies (Round 9)",
+      ],
+      desc: [
+        "Round 9: Command deals Physical and Tactical Damage to 3 Enemies in any lane (Damage Rate: +100% per type).",
+        "Round 9: Command deals Physical and Tactical Damage to 3 Enemies in any lane (Damage Rate: +130% per type).",
+        "Round 9: Command deals Physical and Tactical Damage to 3 Enemies in any lane (Damage Rate: +160% per type).",
+        "Round 9: Command deals Physical and Tactical Damage to 3 Enemies in any lane (Damage Rate: +200% per type).",
+        "Round 9: Command deals Physical and Tactical Damage to 3 Enemies in any lane (Damage Rate: +250% per type).",
+      ] },
+  ],
+  Thunderstrike: [
+    // 2★
+    { short: [
+        "Initiative +25% & Instinct -15% to 2 Enemies adjacency (3 rounds)",
+        "Initiative +30% & Instinct -18% to 2 Enemies adjacency (3 rounds)",
+        "Initiative +35% & Instinct -21% to 2 Enemies adjacency (3 rounds)",
+        "Initiative +42.5% & Instinct -25.5% to 2 Enemies adjacency (3 rounds)",
+        "Initiative +50% & Instinct -30% to 2 Enemies adjacency (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase your Initiative by +25% and reduce Instinct by -15% (enhanced by Strength) of 2 Enemies within adjacency. Each effect lasts for 3 rounds.",
+        "Start of Round 1: Increase your Initiative by +30% and reduce Instinct by -18% (enhanced by Strength) of 2 Enemies within adjacency. Each effect lasts for 3 rounds.",
+        "Start of Round 1: Increase your Initiative by +35% and reduce Instinct by -21% (enhanced by Strength) of 2 Enemies within adjacency. Each effect lasts for 3 rounds.",
+        "Start of Round 1: Increase your Initiative by +42.5% and reduce Instinct by -25.5% (enhanced by Strength) of 2 Enemies within adjacency. Each effect lasts for 3 rounds.",
+        "Start of Round 1: Increase your Initiative by +50% and reduce Instinct by -30% (enhanced by Strength) of 2 Enemies within adjacency. Each effect lasts for 3 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Physical Dmg +8% (Command & Habits)",
+        "Physical Dmg +9.6% (Command & Habits)",
+        "Physical Dmg +11.2% (Command & Habits)",
+        "Physical Dmg +13.6% (Command & Habits)",
+        "Physical Dmg +16% (Command & Habits)",
+      ],
+      desc: [
+        "Start of Combat: Increase your Physical Damage (Command & Habits) Dealt by +8% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) Dealt by +9.6% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) Dealt by +11.2% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) Dealt by +13.6% until the end of combat.",
+        "Start of Combat: Increase your Physical Damage (Command & Habits) Dealt by +16% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Physical Dmg +50% | Bleed +20% (+25% chance) (2 rounds)",
+        "Physical Dmg +60% | Bleed +20% (+30% chance) (2 rounds)",
+        "Physical Dmg +70% | Bleed +20% (+35% chance) (2 rounds)",
+        "Physical Dmg +85.5% | Bleed +20% (+42.5% chance) (2 rounds)",
+        "Physical Dmg +100% | Bleed +20% (+50% chance) (2 rounds)",
+      ],
+      desc: [
+        "Even-numbered Rounds: Command deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +50%). Additionally, there is a 25% chance to afflict the target with Bleed for 2 rounds (Damage Rate: +20%). Bleed deals Physical Damage to the target each round.",
+        "Even-numbered Rounds: Command deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +60%). Additionally, there is a 30% chance to afflict the target with Bleed for 2 rounds (Damage Rate: +20%). Bleed deals Physical Damage to the target each round.",
+        "Even-numbered Rounds: Command deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +70%). Additionally, there is a 35% chance to afflict the target with Bleed for 2 rounds (Damage Rate: +20%). Bleed deals Physical Damage to the target each round.",
+        "Even-numbered Rounds: Command deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +85%). Additionally, there is a 42.5% chance to afflict the target with Bleed for 2 rounds (Damage Rate: +20%). Bleed deals Physical Damage to the target each round.",
+        "Even-numbered Rounds: Command deal Physical Damage to 1 Enemy in the same lane (Damage Rate: +100%). Additionally, there is a 50% chance to afflict the target with Bleed for 2 rounds (Damage Rate: +20%). Bleed deals Physical Damage to the target each round.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg Received +4.8% to 1 Enemy",
+        "Physical Dmg Received +5.67% to 1 Enemy",
+        "Physical Dmg Received +6.72% to 1 Enemy",
+        "Physical Dmg Received +8.16% to 1 Enemy",
+        "Physical Dmg Received +9.6% to 1 Enemy",
+      ],
+      desc: [
+        "Start of Combat: Increase Physical Damage Received by +4.8% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase Physical Damage Received by +5.67% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase Physical Damage Received by +6.72% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase Physical Damage Received by +8.16% of 1 opposing Enemy until the end of combat.",
+        "Start of Combat: Increase Physical Damage Received by +9.6% of 1 opposing Enemy until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Stagger to 1 Enemy (10% chance) (1 or 2 rounds w/ Advantage)",
+        "Stagger to 1 Enemy (13% chance) (1 or 2 rounds w/ Advantage)",
+        "Stagger to 1 Enemy (16% chance) (1 or 2 rounds w/ Advantage)",
+        "Stagger to 1 Enemy (20% chance) (1 or 2 rounds w/ Advantage)",
+        "Stagger to 1 Enemy (25% chance) (1 or 2 rounds w/ Advantage)",
+      ],
+      desc: [
+        "Each Round: 10% chance to afflict Stagger on 1 Enemy in the same lane for 1 round. The duration is doubled (2 rounds) if you have Advantage. Stagger prevents the target from using Attack Modifier Command or launching Basic Attacks on their turn.",
+        "Each Round: 13% chance to afflict Stagger on 1 Enemy in the same lane for 1 round. The duration is doubled (2 rounds) if you have Advantage. Stagger prevents the target from using Attack Modifier Command or launching Basic Attacks on their turn.",
+        "Each Round: 16% chance to afflict Stagger on 1 Enemy in the same lane for 1 round. The duration is doubled (2 rounds) if you have Advantage. Stagger prevents the target from using Attack Modifier Command or launching Basic Attacks on their turn.",
+        "Each Round: 20% chance to afflict Stagger on 1 Enemy in the same lane for 1 round. The duration is doubled (2 rounds) if you have Advantage. Stagger prevents the target from using Attack Modifier Command or launching Basic Attacks on their turn.",
+        "Each Round: 25% chance to afflict Stagger on 1 Enemy in the same lane for 1 round. The duration is doubled (2 rounds) if you have Advantage. Stagger prevents the target from using Attack Modifier Command or launching Basic Attacks on their turn.",
+      ] },
+  ],
+  Vesper: [
+    // 2★
+    { short: [
+        "Tactical Dmg +8% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +9.6% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +11.2% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +13.6% to 1 Ally (Vanguard/other)",
+        "Tactical Dmg +16% to 1 Ally (Vanguard/other)",
+      ],
+      desc: [
+        "Start of Combat: Increase Tactical Damage Dealt by +8% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +9.6% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +11.2% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +13.6% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+        "Start of Combat: Increase Tactical Damage Dealt by +16% of 1 Ally in any lane (prioritizes the Vanguard) until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Dmg Received -4% | Initiative +5%",
+        "Dmg Received -4.8% | Initiative +6%",
+        "Dmg Received -5.6% | Initiative +7%",
+        "Dmg Received -6.8% | Initiative +8.5%",
+        "Dmg Received -8% | Initiative +10%",
+      ],
+      desc: [
+        "Start of Combat: Reduce your Damage Received by -4% and increase your Instinct by +5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -4.8% and increase your Instinct by +6% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -5.6% and increase your Instinct by +7% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -6.8% and increase your Instinct by +8.5% until the end of combat.",
+        "Start of Combat: Reduce your Damage Received by -8% and increase your Instinct by +10% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Resistance -10% to yourself & 1 Ally adjacency (12.5% chance) (2 rounds)",
+        "Resistance -10% to yourself & 1 Ally adjacency (15% chance) (2 rounds)",
+        "Resistance -10% to yourself & 1 Ally adjacency (17.5% chance) (2 rounds)",
+        "Resistance -10% to yourself & 1 Ally adjacency (21.25% chance) (2 rounds)",
+        "Resistance -10% to yourself & 1 Ally adjacency (25% chance) (2 rounds)",
+      ],
+      desc: [
+        "Each Round: 12.5% chance to apply Resistance (-10%) to yourself and 1 other Ally within adjacency for 2 rounds.",
+        "Each Round: 15% chance to apply Resistance (-10%) to yourself and 1 other Ally within adjacency for 2 rounds.",
+        "Each Round: 17.5% chance to apply Resistance (-10%) to yourself and 1 other Ally within adjacency for 2 rounds.",
+        "Each Round: 21.25% chance to apply Resistance (-10%) to yourself and 1 other Ally within adjacency for 2 rounds.",
+        "Each Round: 25% chance to apply Resistance (-10%) to yourself and 1 other Ally within adjacency for 2 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Instinct +8% to 3 Allies",
+        "Instinct +9.6% to 3 Allies",
+        "Instinct +11.2% to 3 Allies",
+        "Instinct +13.6% to 3 Allies",
+        "Instinct +16% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Instinct by +8% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +9.6% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +11.2% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +13.6% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Instinct by +16% (enhanced by Instinct) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Confusion 1 Enemy adjacency (24% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (31.2% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (38.4% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (48% chance) (2 rounds)",
+        "Confusion 1 Enemy adjacency (60% chance) (2 rounds)",
+      ],
+      desc: [
+        "Rounds 6-10: 24% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Rounds 6-10: 31.2% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Rounds 6-10: 38.4% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Rounds 6-10: 48% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+        "Rounds 6-10: 60% chance to afflict Confusion on 1 Enemy within adjacency for 2 rounds.",
+      ] },
+  ],
+  Arulix: [
+    // 2★
+    { short: [
+        "Overwhelm 1 Enemy (Fire Dmg dealer/others) (12.5% chance) (2 rounds) | Stagger 1 Enemy (Physical Dmg dealer/others) (12.5% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (Fire Dmg dealer/others) (15% chance) (2 rounds) | Stagger 1 Enemy (Physical Dmg dealer/others) (15% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (Fire Dmg dealer/others) (17.5% chance) (2 rounds) | Stagger 1 Enemy (Physical Dmg dealer/others) (17.5% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (Fire Dmg dealer/others) (21.3% chance) (2 rounds) | Stagger 1 Enemy (Physical Dmg dealer/others) (21.3% chance) (2 rounds)",
+        "Overwhelm 1 Enemy (Fire Dmg dealer/others) (25% chance) (2 rounds) | Stagger 1 Enemy (Physical Dmg dealer/others) (25% chance) (2 rounds)",
+      ],
+      desc: [
+        "Rounds 1,3,6,8: 12.5% chance to Overwhelm 1 Enemy in any lane for 2 rounds (prioritizes the Fire Damage dealers). Rounds 2,4,7,9: 12.5% chance to Stagger 1 Enemy in any lane for 2 rounds (prioritizes the Physical Damage dealers).",
+        "Rounds 1,3,6,8: 15% chance to Overwhelm 1 Enemy in any lane for 2 rounds (prioritizes the Fire Damage dealers). Rounds 2,4,7,9: 15% chance to Stagger 1 Enemy in any lane for 2 rounds (prioritizes the Physical Damage dealers).",
+        "Rounds 1,3,6,8: 17.5% chance to Overwhelm 1 Enemy in any lane for 2 rounds (prioritizes the Fire Damage dealers). Rounds 2,4,7,9: 17.5% chance to Stagger 1 Enemy in any lane for 2 rounds (prioritizes the Physical Damage dealers).",
+        "Rounds 1,3,6,8: 21.3% chance to Overwhelm 1 Enemy in any lane for 2 rounds (prioritizes the Fire Damage dealers). Rounds 2,4,7,9: 21.3% chance to Stagger 1 Enemy in any lane for 2 rounds (prioritizes the Physical Damage dealers).",
+        "Rounds 1,3,6,8: 25% chance to Overwhelm 1 Enemy in any lane for 2 rounds (prioritizes the Fire Damage dealers). Rounds 2,4,7,9: 25% chance to Stagger 1 Enemy in any lane for 2 rounds (prioritizes the Physical Damage dealers).",
+      ] },
+    // 4★
+    { short: [
+        "Strength & Intelligence -4% to 3 Enemies",
+        "Strength & Intelligence -4.8% to 3 Enemies",
+        "Strength & Intelligence -5.6% to 3 Enemies",
+        "Strength & Intelligence -6.8% to 3 Enemies",
+        "Strength & Intelligence -8% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Strength and Intelligence by -4% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -4.8% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -5.6% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -6.8% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+        "Start of Combat: Reduce Strength and Intelligence by -8% (enhanced by Instinct) of 3 Enemies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Physical Dmg +20% to 2 Enemies (rounds 1-3) | Physical Dmg +30% to 2 Enemies (round 5) | Physical Dmg +40% to 2 Enemies (round 8)",
+        "Physical Dmg +24% to 2 Enemies (rounds 1-3) | Physical Dmg +36% to 2 Enemies (round 5) | Physical Dmg +48% to 2 Enemies (round 8)",
+        "Physical Dmg +28% to 2 Enemies (rounds 1-3) | Physical Dmg +42% to 2 Enemies (round 5) | Physical Dmg +56% to 2 Enemies (round 8)",
+        "Physical Dmg +34% to 2 Enemies (rounds 1-3) | Physical Dmg +51% to 2 Enemies (round 5) | Physical Dmg +68% to 2 Enemies (round 8)",
+        "Physical Dmg +40% to 2 Enemies (rounds 1-3) | Physical Dmg +60% to 2 Enemies (round 5) | Physical Dmg +80% to 2 Enemies (round 8)",
+      ],
+      desc: [
+        "Rounds 1,2,3,5,8: Deal Physical Damage to 2 Enemies in any lane (Damage Rate:+20%). This damage is increased by 1.5x (+30%) on Round 5 and by 2x (+40%) on Round 8.",
+        "Rounds 1,2,3,5,8: Deal Physical Damage to 2 Enemies in any lane (Damage Rate:+24%). This damage is increased by 1.5x (+36%) on Round 5 and by 2x (+48%) on Round 8.",
+        "Rounds 1,2,3,5,8: Deal Physical Damage to 2 Enemies in any lane (Damage Rate:+28%). This damage is increased by 1.5x (+42%) on Round 5 and by 2x (+56%) on Round 8.",
+        "Rounds 1,2,3,5,8: Deal Physical Damage to 2 Enemies in any lane (Damage Rate:+34%). This damage is increased by 1.5x (+51%) on Round 5 and by 2x (+68%) on Round 8.",
+        "Rounds 1,2,3,5,8: Deal Physical Damage to 2 Enemies in any lane (Damage Rate:+40%). This damage is increased by 1.5x (+60%) on Round 5 and by 2x (+80%) on Round 8.",
+      ] },
+    // 8★
+    { short: [
+        "Physical Dmg Received & Fire Dmg Received -2.5% to 2 Allies",
+        "Physical Dmg Received & Fire Dmg Received -3% to 2 Allies",
+        "Physical Dmg Received & Fire Dmg Received -3.5% to 2 Allies",
+        "Physical Dmg Received & Fire Dmg Received -4% to 2 Allies",
+        "Physical Dmg Received & Fire Dmg Received -4.5% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Reduce Physical Damage Received (Command and Habits) and Fire Damage Received of 2 other Allies in any lane by -2.5% until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command and Habits) and Fire Damage Received of 2 other Allies in any lane by -3% until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command and Habits) and Fire Damage Received of 2 other Allies in any lane by -3.5% until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command and Habits) and Fire Damage Received of 2 other Allies in any lane by -4.25% until the end of combat.",
+        "Start of Combat: Reduce Physical Damage Received (Command and Habits) and Fire Damage Received of 2 other Allies in any lane by -5% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Weakened/Vulnerable 1 Enemy (25% chance) (2 rounds) | Advantage/Resistance 1 Ally (25% chance) (2 rounds)",
+        "Weakened/Vulnerable 1 Enemy (32.5% chance) (2 rounds) | Advantage/Resistance 1 Ally (32.5% chance) (2 rounds)",
+        "Weakened/Vulnerable 1 Enemy (40% chance) (2 rounds) | Advantage/Resistance 1 Ally (40% chance) (2 rounds)",
+        "Weakened/Vulnerable 1 Enemy (50% chance) (2 rounds) | Advantage/Resistance 1 Ally (50% chance) (2 rounds)",
+        "Weakened/Vulnerable 1 Enemy (62.5% chance) (2 rounds) | Advantage/Resistance 1 Ally (62.5% chance) (2 rounds)",
+      ],
+      desc: [
+        "Start of Each Round: If any ally is afflicted with Weakened or Vulnerable, there is a 25% chance to apply that same effect to 1 Enemy in any lane for 2 rounds. Start of Each Round: If any enemy is enhanced by Advantage or Resistance, there is a 25% chance to apply that same effect to 1 Ally in any lane for 2 rounds.",
+        "Start of Each Round: If any ally is afflicted with Weakened or Vulnerable, there is a 32.5% chance to apply that same effect to 1 Enemy in any lane for 2 rounds. Start of Each Round: If any enemy is enhanced by Advantage or Resistance, there is a 32.5% chance to apply that same effect to 1 Ally in any lane for 2 rounds.",
+        "Start of Each Round: If any ally is afflicted with Weakened or Vulnerable, there is a 40% chance to apply that same effect to 1 Enemy in any lane for 2 rounds. Start of Each Round: If any enemy is enhanced by Advantage or Resistance, there is a 40% chance to apply that same effect to 1 Ally in any lane for 2 rounds.",
+        "Start of Each Round: If any ally is afflicted with Weakened or Vulnerable, there is a 50% chance to apply that same effect to 1 Enemy in any lane for 2 rounds. Start of Each Round: If any enemy is enhanced by Advantage or Resistance, there is a 50% chance to apply that same effect to 1 Ally in any lane for 2 rounds.",
+        "Start of Each Round: If any ally is afflicted with Weakened or Vulnerable, there is a 62.5% chance to apply that same effect to 1 Enemy in any lane for 2 rounds. Start of Each Round: If any enemy is enhanced by Advantage or Resistance, there is a 62.5% chance to apply that same effect to 1 Ally in any lane for 2 rounds.",
+      ] },
+  ],
+  Nyrena: [
+    // 2★
+    { short: [
+        "Strength & Initiative -4% to 3 Enemies",
+        "Strength & Initiative -4.8% to 3 Enemies",
+        "Strength & Initiative -5.6% to 3 Enemies",
+        "Strength & Initiative -6.8% to 3 Enemies",
+        "Strength & Initiative -8% to 3 Enemies",
+      ],
+      desc: [
+        "Start of Combat: Reduce the Strength and Initiative (enhanced by Intelligence) of 3 Enemies in any lane by -4% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Initiative (enhanced by Intelligence) of 3 Enemies in any lane by -4.8% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Initiative (enhanced by Intelligence) of 3 Enemies in any lane by -5.6% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Initiative (enhanced by Intelligence) of 3 Enemies in any lane by -6.8% until the end of combat.",
+        "Start of Combat: Reduce the Strength and Initiative (enhanced by Intelligence) of 3 Enemies in any lane by -8% until the end of combat.",
+      ] },
+    // 4★
+    { short: [
+        "Intelligence & Instinct +4% to 3 Allies",
+        "Intelligence & Instinct +4.8% to 3 Allies",
+        "Intelligence & Instinct +5.6% to 3 Allies",
+        "Intelligence & Instinct +6.8% to 3 Allies",
+        "Intelligence & Instinct +8% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase the Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +4% until the end of combat.",
+        "Start of Combat: Increase the Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +4.8% until the end of combat.",
+        "Start of Combat: Increase the Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +5.6% until the end of combat.",
+        "Start of Combat: Increase the Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +6.8% until the end of combat.",
+        "Start of Combat: Increase the Intelligence and Instinct (enhanced by Initiative) of 3 Allies in any lane by +8% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Fire Dmg +8% to self (5 rounds) | Fire Dmg +12% to 1 Ally (adjacency) (5 rounds) | Tile Dmg +10% (after combat)",
+        "Fire Dmg +9.6% to self (5 rounds) | Fire Dmg +14.5% to 1 Ally (adjacency) (5 rounds) | Tile Dmg +12% (after combat)",
+        "Fire Dmg +11.2% to self (5 rounds) | Fire Dmg +16.8% to 1 Ally (adjacency) (5 rounds) | Tile Dmg +14% (after combat)",
+        "Fire Dmg +13.6% to self (5 rounds) | Fire Dmg +20.4% to 1 Ally (adjacency) (5 rounds) | Tile Dmg +17% (after combat)",
+        "Fire Dmg +16% to self (5 rounds) | Fire Dmg +24% to 1 Ally (adjacency) (5 rounds) | Tile Dmg +20% (after combat)",
+      ],
+      desc: [
+        "Start of Round 1: Increase your Fire Damage Dealt by +8% for 5 round(s). Start of Round 6: Increase the Fire Damage Dealt of 1 Ally within adjacency by +12% for 5 round(s). After Combat: Increase your Tile Damage Dealt to the tile's durability.",
+        "Start of Round 1: Increase your Fire Damage Dealt by +9.6% for 5 round(s). Start of Round 6: Increase the Fire Damage Dealt of 1 Ally within adjacency by +14.4% for 5 round(s). After Combat: Increase your Tile Damage Dealt to the tile's durability.",
+        "Start of Round 1: Increase your Fire Damage Dealt by +11.2% for 5 round(s). Start of Round 6: Increase the Fire Damage Dealt of 1 Ally within adjacency by +16.8% for 5 round(s). After Combat: Increase your Tile Damage Dealt to the tile's durability.",
+        "Start of Round 1: Increase your Fire Damage Dealt by +13.6% for 5 round(s). Start of Round 6: Increase the Fire Damage Dealt of 1 Ally within adjacency by +20.4% for 5 round(s). After Combat: Increase your Tile Damage Dealt to the tile's durability.",
+        "Start of Round 1: Increase your Fire Damage Dealt by +16% for 5 round(s). Start of Round 6: Increase the Fire Damage Dealt of 1 Ally within adjacency by +24% for 5 round(s). After Combat: Increase your Tile Damage Dealt to the tile's durability.",
+      ] },
+    // 8★
+    { short: [
+        "Tactical & Fire Dmg +4%",
+        "Tactical & Fire Dmg +4.8%",
+        "Tactical & Fire Dmg +5.6%",
+        "Tactical & Fire Dmg +6.8%",
+        "Tactical & Fire Dmg +8%",
+      ],
+      desc: [
+        "Start of Combat: Increase your Tactical and Fire Damage Dealt by +4% until the end of combat.",
+        "Start of Combat: Increase your Tactical and Fire Damage Dealt by +4.8% until the end of combat.",
+        "Start of Combat: Increase your Tactical and Fire Damage Dealt by +5.6% until the end of combat.",
+        "Start of Combat: Increase your Tactical and Fire Damage Dealt by +6.8% until the end of combat.",
+        "Start of Combat: Increase your Tactical and Fire Damage Dealt by +8% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg Received -5% to 3 Allies (rounds 6-10) | Physical Dmg Received -10% to 3 Allies (Defending)",
+        "Physical Dmg Received -6.5% to 3 Allies (rounds 6-10) | Physical Dmg Received -13% to 3 Allies (Defending)",
+        "Physical Dmg Received -8% to 3 Allies (rounds 6-10) | Physical Dmg Received -16% to 3 Allies (Defending)",
+        "Physical Dmg Received -10% to 3 Allies (rounds 6-10) | Physical Dmg Received -20% to 3 Allies (Defending)",
+        "Physical Dmg Received -12.5% to 3 Allies (rounds 6-10) | Physical Dmg Received -25% to 3 Allies (Defending)",
+      ],
+      desc: [
+        "Start of Round 6-10: Reduce the Physical Damage Received of 3 Allies in any lane by -5% until the end of the round. When Defending, double this effect (-10%).",
+        "Start of Round 6-10: Reduce the Physical Damage Received of 3 Allies in any lane by -6.5% until the end of the round. When Defending, double this effect (-13%).",
+        "Start of Round 6-10: Reduce the Physical Damage Received of 3 Allies in any lane by -8% until the end of the round. When Defending, double this effect (-16%).",
+        "Start of Round 6-10: Reduce the Physical Damage Received of 3 Allies in any lane by -10% until the end of the round. When Defending, double this effect (-20%).",
+        "Start of Round 6-10: Reduce the Physical Damage Received of 3 Allies in any lane by -12.5% until the end of the round. When Defending, double this effect (-25%).",
+      ] },
+  ],
+  Dawnseeker: [
+    // 2★
+    { short: [
+        "Tactical Dmg +9% to 1 Ally (Left Flank) | Fire Dmg +9% to 1 Ally (Right Flank) (3 rounds)",
+        "Tactical Dmg +10.8% to 1 Ally (Left Flank) | Fire Dmg +10.8% to 1 Ally (Right Flank) (3 rounds)",
+        "Tactical Dmg +12.6% to 1 Ally (Left Flank) | Fire Dmg +12.6% to 1 Ally (Right Flank) (3 rounds)",
+        "Tactical Dmg +15% to 1 Ally (Left Flank) | Fire Dmg +15.3% to 1 Ally (Right Flank) (3 rounds)",
+        "Tactical Dmg +18.75% to 1 Ally (Left Flank) | Fire Dmg +18% to 1 Ally (Right Flank) (3 rounds)",
+      ],
+      desc: [
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +9% for 3 rounds.",
+        "start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +10.8% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +12.6% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +15.3% for 3 rounds.",
+        "Start of Round 1: Increase the Tactical Damage Dealt of 1 Ally in any lane (prioritizes the Left Flank) and the Fire Damage Dealt of 1 Ally in any lane (prioritizes the Right Flank) by +18% for 3 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Recovery Received +15% to 2 Allies",
+        "Recovery Received +18% to 2 Allies",
+        "Recovery Received +21% to 2 Allies",
+        "Recovery Received +25.5% to 2 Allies",
+        "Recovery Received +30% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Recovery Received by +15% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +18% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +21% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +25.5% of 2 other Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Recovery Received by +30% of 2 other Allies in any lane until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Tactical Dmg +100% | Recovery +60% (Rounds 1,2)",
+        "Tactical Dmg +110% | Recovery +66% (Rounds 1,2)",
+        "Tactical Dmg +120% | Recovery +72% (Rounds 1,2)",
+        "Tactical Dmg +135% | Recovery +81% (Rounds 1,2)",
+        "Tactical Dmg +150% | Recovery +90% (Rounds 1,2)",
+      ],
+      desc: [
+        "Rounds 1,2: Command gains increase the Tactical Damage Rate to +100%, and increase the Recovery to +60%.",
+        "Rounds 1,2: Command gains increase the Tactical Damage Rate to +110%, and increase the Recovery to +66%.",
+        "Rounds 1,2: Command gains increase the Tactical Damage Rate to +120%, and increase the Recovery to +72%.",
+        "Rounds 1,2: Command gains increase the Tactical Damage Rate to +135%, and increase the Recovery to +81%.",
+        "Rounds 1,2: Command gains increase the Tactical Damage Rate to +150%, and increase the Recovery to +90%.",
+      ] },
+    // 8★
+    { short: [
+        "Initiative +8% to 3 Allies",
+        "Initiative +9.6% to 3 Allies",
+        "Initiative +11.2% to 3 Allies",
+        "Initiative +13.6% to 3 Allies",
+        "Initiative +16% to 3 Allies",
+      ],
+      desc: [
+        "Start of Combat: Increase Initiative by +8% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +9.6% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +11.2% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +13.6% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+        "Start of Combat: Increase Initiative by +16% (enhanced by Initiative) of 3 Allies in any lane until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Intelligence & Instinct +5% to 3 Allies (3 rounds) | First-Strike 2 Allies (20% chance) (rounds 1-3)",
+        "Intelligence & Instinct +6.5% to 3 Allies (3 rounds) | First-Strike 2 Allies (26% chance) (rounds 1-3)",
+        "Intelligence & Instinct +8% to 3 Allies (3 rounds) | First-Strike 2 Allies (32% chance) (rounds 1-3)",
+        "Intelligence & Instinct +10% to 3 Allies (3 rounds) | First-Strike 2 Allies (40% chance) (rounds 1-3)",
+        "Intelligence & Instinct +12.5% to 3 Allies (3 rounds) | First-Strike 2 Allies (50% chance) (rounds 1-3)",
+      ],
+      desc: [
+        "Start of Round 1: Increase Intelligence and Instinct (enhanced by Initiative) by +5% of 3 Allies in any lane for 3 rounds. Start of Rounds 1-3: 20% chance to grant First-Strike to 2 other Allies in any lane until the end of the round.",
+        "Start of Round 1: Increase Intelligence and Instinct (enhanced by Initiative) by +6.5% of 3 Allies in any lane for 3 rounds. Start of Rounds 1-3: 26% chance to grant First-Strike to 2 other Allies in any lane until the end of the round.",
+        "Start of Round 1: Increase Intelligence and Instinct (enhanced by Initiative) by +8% of 3 Allies in any lane for 3 rounds. Start of Rounds 1-3: 32% chance to grant First-Strike to 2 other Allies in any lane until the end of the round.",
+        "Start of Round 1: Increase Intelligence and Instinct (enhanced by Initiative) by +10% of 3 Allies in any lane for 3 rounds. Start of Rounds 1-3: 40% chance to grant First-Strike to 2 other Allies in any lane until the end of the round.",
+        "Start of Round 1: Increase Intelligence and Instinct (enhanced by Initiative) by +12.5% of 3 Allies in any lane for 3 rounds. Start of Rounds 1-3: 50% chance to grant First-Strike to 2 other Allies in any lane until the end of the round.",
+      ] },
+  ],
+  Arrax: [
+    // 2★
+    { short: [
+        "Strength +25% | Initiative +10% | Physical Dmg +25% (4 rounds) | Physical Dmg Received -10% (4 rounds) | Instinct -40% (4 rounds)",
+        "Strength +25% | Initiative +10% | Physical Dmg +25% (4 rounds) | Physical Dmg Received -8% (4 rounds) | Instinct -32% (4 rounds)",
+        "Strength +25% | Initiative +10% | Physical Dmg +25% (4 rounds) | Physical Dmg Received -6% (4 rounds) | Instinct -24% (4 rounds)",
+        "Strength +25% | Initiative +10% | Physical Dmg +25% (4 rounds) | Physical Dmg Received -3% (4 rounds) | Instinct -12% (4 rounds)",
+        "Strength +25% | Initiative +10% | Physical Dmg +25% (4 rounds) | Physical Dmg Received -0% (4 rounds) | Instinct -0% (4 rounds)",
+      ],
+      desc: [
+        "Start of Round 4: Increase your Strength by +25%, Initiative by +10%, and Physical Damage Dealt by +25% for 4 rounds. However, also increase your Physical Damage Received by -10% and reduce your Instinct by -40% for 4 rounds.",
+        "Start of Round 4: Increase your Strength by +25%, Initiative by +10%, and Physical Damage Dealt by +25% for 4 rounds. However, also increase your Physical Damage Received by -8% and reduce your Instinct by -32% for 4 rounds.",
+        "Start of Round 4: Increase your Strength by +25%, Initiative by +10%, and Physical Damage Dealt by +25% for 4 rounds. However, also increase your Physical Damage Received by -6% and reduce your Instinct by -24% for 4 rounds.",
+        "Start of Round 4: Increase your Strength by +25%, Initiative by +10%, and Physical Damage Dealt by +25% for 4 rounds. However, also increase your Physical Damage Received by -3% and reduce your Instinct by -12% for 4 rounds.",
+        "Start of Round 4: Increase your Strength by +25%, Initiative by +10%, and Physical Damage Dealt by +25% for 4 rounds. However, also increase your Physical Damage Received by -0% and reduce your Instinct by -0% for 4 rounds.",
+      ] },
+    // 4★
+    { short: [
+        "Tactical & Fire Dmg Received -2.5% to 2 Allies",
+        "Tactical & Fire Dmg Received -3% to 2 Allies",
+        "Tactical & Fire Dmg Received -3.5% to 2 Allies",
+        "Tactical & Fire Dmg Received -4.25% to 2 Allies",
+        "Tactical & Fire Dmg Received -5% to 2 Allies",
+      ],
+      desc: [
+        "Start of Combat: Reduce the Tactical Damage and Fire Damage Received of 2 other Allies in any lane by -2.5% until the end of combat.",
+        "Start of Combat: Reduce the Tactical Damage and Fire Damage Received of 2 other Allies in any lane by -3% until the end of combat.",
+        "Start of Combat: Reduce the Tactical Damage and Fire Damage Received of 2 other Allies in any lane by -3.5% until the end of combat.",
+        "Start of Combat: Reduce the Tactical Damage and Fire Damage Received of 2 other Allies in any lane by -4.25% until the end of combat.",
+        "Start of Combat: Reduce the Tactical Damage and Fire Damage Received of 2 other Allies in any lane by -5% until the end of combat.",
+      ] },
+    // 6★
+    { short: [
+        "Archers: Tactical Dmg Received -9% to 3 Allies (4 rounds) | Shieldbearers: Fire Dmg Received -9% to 3 Allies (4 rounds)",
+        "Archers: Tactical Dmg Received -10.8% to 3 Allies (4 rounds) | Shieldbearers: Fire Dmg Received -10.8% to 3 Allies (4 rounds)",
+        "Archers: Tactical Dmg Received -12.6% to 3 Allies (4 rounds) | Shieldbearers: Fire Dmg Received -12.6% to 3 Allies (4 rounds)",
+        "Archers: Tactical Dmg Received -15.3% to 3 Allies (4 rounds) | Shieldbearers: Fire Dmg Received -15.3% to 3 Allies (4 rounds)",
+        "Archers: Tactical Dmg Received -18% to 3 Allies (4 rounds) | Shieldbearers: Fire Dmg Received -18% to 3 Allies (4 rounds)",
+      ],
+      desc: [
+        "(When leading Archers) Start of Round 4: Reduce the Tactical Damage Received of 3 Allies in any lane by -9% for 4 rounds. When leading Shieldbearers) Start of Round 4: Reduce the Fire Damage Received of 3 Allies in any lane by -9% for 4 rounds.",
+        "(When leading Archers) Start of Round 4: Reduce the Tactical Damage Received of 3 Allies in any lane by -10.8% for 4 rounds. When leading Shieldbearers) Start of Round 4: Reduce the Fire Damage Received of 3 Allies in any lane by -10.8% for 4 rounds.",
+        "(When leading Archers) Start of Round 4: Reduce the Tactical Damage Received of 3 Allies in any lane by -12.6% for 4 rounds. When leading Shieldbearers) Start of Round 4: Reduce the Fire Damage Received of 3 Allies in any lane by -12.6% for 4 rounds.",
+        "(When leading Archers) Start of Round 4: Reduce the Tactical Damage Received of 3 Allies in any lane by -15.3% for 4 rounds. When leading Shieldbearers) Start of Round 4: Reduce the Fire Damage Received of 3 Allies in any lane by -15.3% for 4 rounds.",
+        "(When leading Archers) Start of Round 4: Reduce the Tactical Damage Received of 3 Allies in any lane by -18% for 4 rounds. When leading Shieldbearers) Start of Round 4: Reduce the Fire Damage Received of 3 Allies in any lane by -18% for 4 rounds.",
+      ] },
+    // 8★
+    { short: [
+        "Fire Dmg Received -5% per-stack of Fire Ward to self and 1 Ally (adjacency) (+1 stack per round if Ally retreated in previous round)",
+        "Fire Dmg Received -6% per-stack of Fire Ward to self and 1 Ally (adjacency) (+1 stack per round if Ally retreated in previous round)",
+        "Fire Dmg Received -7% per-stack of Fire Ward to self and 1 Ally (adjacency) (+1 stack per round if Ally retreated in previous round)",
+        "Fire Dmg Received -8.5% per-stack of Fire Ward to self and 1 Ally (adjacency) (+1 stack per round if Ally retreated in previous round)",
+        "Fire Dmg Received -10% per-stack of Fire Ward to self and 1 Ally (adjacency) (+1 stack per round if Ally retreated in previous round)",
+      ],
+      desc: [
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. At the start of each round, if the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each stack of Fire Ward reduces the target's Fire Damage Received by -5% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. At the start of each round, if the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each stack of Fire Ward reduces the target's Fire Damage Received by -6% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. At the start of each round, if the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each stack of Fire Ward reduces the target's Fire Damage Received by -7% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. At the start of each round, if the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each stack of Fire Ward reduces the target's Fire Damage Received by -8.5% until the end of combat.",
+        "Start of Combat: Grant yourself and 1 other Ally within adjacency 1 stack of Fire Ward. At the start of each round, if the target Ally retreated in the previous round, grant yourself 1 stack of Fire Ward. Each stack of Fire Ward reduces the target's Fire Damage Received by -10% until the end of combat.",
+      ] },
+    // 10★
+    { short: [
+        "Physical Dmg Received +9% to 2 Enemies (adjacency) (4 rounds)",
+        "Physical Dmg Received +11.7% to 2 Enemies (adjacency) (4 rounds)",
+        "Physical Dmg Received +14.4% to 2 Enemies (adjacency) (4 rounds)",
+        "Physical Dmg Received +18% to 2 Enemies (adjacency) (4 rounds)",
+        "Physical Dmg Received +22.5% to 2 Enemies (adjacency) (4 rounds)",
+      ],
+      desc: [
+        "Start of Round 4: Increase the Physical Damage Received of 2 Enemies within adjacency by +9% for 4 rounds.",
+        "Start of Round 4: Increase the Physical Damage Received of 2 Enemies within adjacency by +11.7% for 4 rounds.",
+        "Start of Round 4: Increase the Physical Damage Received of 2 Enemies within adjacency by +14.4% for 4 rounds.",
+        "Start of Round 4: Increase the Physical Damage Received of 2 Enemies within adjacency by +18% for 4 rounds.",
+        "Start of Round 4: Increase the Physical Damage Received of 2 Enemies within adjacency by +22.5% for 4 rounds.",
+      ] },
+  ],
+};
+
+function clampLevel(level) {
+  return Math.min(Math.max(Math.round(Number(level) || 1), 1), HABIT_MAX_LEVEL);
+}
+
+// Habits for a dragon, resolved to the levels it is currently at and tagged with
+// the Star Rank that unlocks each one. `levels` is the dragon's per-habit
+// upgrade levels (defaults to level 1). Unknown names return [].
+function habitsFor(name, starRank, levels) {
+  const list = DRAGON_HABITS[name] || [];
+  const stars = Number(starRank) || 0;
+  return list.map((h, i) => {
+    const level = clampLevel(levels && levels[i]);
+    return {
+      index: i + 1,
+      star: HABIT_UNLOCK_STARS[i],
+      unlocked: stars >= HABIT_UNLOCK_STARS[i],
+      level,
+      short: h.short[level - 1],
+      desc: h.desc[level - 1],
+      maxShort: h.short[HABIT_MAX_LEVEL - 1],
+      maxDesc: h.desc[HABIT_MAX_LEVEL - 1],
+      // Every level's wording, for showing the full upgrade path.
+      shortLevels: h.short,
+      descLevels: h.desc,
+    };
+  });
+}
+
+// How many of the five habits a given Star Rank has unlocked.
+function habitsUnlockedCount(starRank) {
+  return Math.max(0, Math.min(5, Math.floor((Number(starRank) || 0) / 2)));
+}
+
+window.DRAGON_HABITS_DB = {
+  HABIT_UNLOCK_STARS,
+  HABIT_MAX_LEVEL,
+  DRAGON_HABITS,
+  habitsFor,
+  habitsUnlockedCount,
+  clampHabitLevel: clampLevel,
+};
