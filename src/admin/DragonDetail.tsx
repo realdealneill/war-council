@@ -180,12 +180,21 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
               <tbody>
                 {STAT_KEYS.map((key) => {
                   const base = dragon[key];
+                  const projected = base != null ? Math.round(base * statMult) : null;
+                  const delta = projected != null ? projected - base! : null;
                   return (
                     <tr key={key} className="border-t border-neutral-900">
                       <td className="py-1">{STAT_LABELS[key]}</td>
                       <td className="py-1 text-right text-neutral-400">{base ?? "—"}</td>
                       <td className="py-1 text-right font-semibold">
-                        {base != null ? Math.round(base * statMult).toLocaleString() : "—"}
+                        {projected != null ? (
+                          <>
+                            {projected.toLocaleString()}
+                            {delta! > 0 && <span className="ml-1 font-normal text-emerald-400">(+{delta!.toLocaleString()})</span>}
+                          </>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                     </tr>
                   );
