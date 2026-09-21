@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
+import { DragonDetail } from "./DragonDetail";
 
 type StatField = "baseStrength" | "baseIntelligence" | "baseInstinct" | "baseInitiative";
 const STAT_FIELDS: { key: StatField; label: string }[] = [
@@ -40,12 +41,17 @@ function StatInput({ dragon, field }: { dragon: Doc<"dragons">; field: StatField
 export function DragonStatsAdmin() {
   const rows = useQuery(api.dragons.list);
   const sorted = [...(rows ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  const [selectedId, setSelectedId] = useState<Doc<"dragons">["_id"] | null>(null);
+
+  const selected = sorted.find((d) => d._id === selectedId) ?? null;
+  if (selected) return <DragonDetail dragon={selected} onBack={() => setSelectedId(null)} />;
 
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
       <h1 className="mb-1 text-xl font-bold">Dragon base stats</h1>
       <p className="mb-4 text-sm text-neutral-500">
         Hidden admin route — not linked from the app. Values save on blur. Blank = leave unset.
+        Click a name to open the star/level/habit calculator.
       </p>
 
       {rows === undefined ? (
@@ -65,7 +71,11 @@ export function DragonStatsAdmin() {
           <tbody>
             {sorted.map((d) => (
               <tr key={d._id} className="border-b border-neutral-900 hover:bg-neutral-900/60">
-                <td className="px-2 py-1 font-medium">{d.name}</td>
+                <td className="px-2 py-1 font-medium">
+                  <button className="underline-offset-2 hover:underline" onClick={() => setSelectedId(d._id)}>
+                    {d.name}
+                  </button>
+                </td>
                 <td className="px-2 py-1 text-neutral-400">{d.rarity}</td>
                 <td className="px-2 py-1 text-neutral-400">{d.breed}</td>
                 {STAT_FIELDS.map((f) => (
