@@ -39,6 +39,25 @@ export const dragonFields = {
   baseInitiative: v.optional(v.number()),
 };
 
+// A percentage value per upgrade level (1-5), null where not yet filled in.
+const pctByLevel = v.array(v.union(v.number(), v.null()));
+
+// Structured, hand-entered capability data for one dragon's one habit slot
+// (1-5) — filled in via /admin/habit-builder while reading the habit's real
+// wording (src/data/generated/habits.json). Meant to grow: new percentage
+// rows (or other fields) get added here over time as Neill decides what's
+// worth capturing, the same way dragons' base stats grew incrementally.
+export const habitCapabilityFields = {
+  dragonId: v.id("dragons"),
+  habitSlot: v.number(), // 1-5
+  // Which of combat's rounds (1-10) this habit is actually active during.
+  activeRounds: v.array(v.number()),
+  fireDmgReceivedPct: v.optional(pctByLevel),
+  tacticalDmgReceivedPct: v.optional(pctByLevel),
+  physicalDmgReceivedPct: v.optional(pctByLevel),
+};
+
 export default defineSchema({
   dragons: defineTable(dragonFields).index("by_name", ["name"]),
+  habitCapabilities: defineTable(habitCapabilityFields).index("by_dragon_habit", ["dragonId", "habitSlot"]),
 });

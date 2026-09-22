@@ -9,6 +9,7 @@
  */
 
 import type * as dragons from "../dragons.js";
+import type * as habitCapabilities from "../habitCapabilities.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +19,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   dragons: typeof dragons;
+  habitCapabilities: typeof habitCapabilities;
 }>;
 
 /**

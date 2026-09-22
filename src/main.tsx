@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { DragonStatsAdmin } from './admin/DragonStatsAdmin.tsx'
+import { HabitBuilder } from './admin/HabitBuilder.tsx'
 import { SynergyRules } from './admin/SynergyRules.tsx'
 import { convex } from './convexClient.ts'
 
@@ -12,6 +13,7 @@ import { convex } from './convexClient.ts'
 const ADMIN_ROUTES: Record<string, () => ReactElement> = {
   '/admin/dragon-stats': DragonStatsAdmin,
   '/admin/synergy-rules': SynergyRules,
+  '/admin/habit-builder': HabitBuilder,
 }
 const Route = ADMIN_ROUTES[window.location.pathname]
 

@@ -46,6 +46,9 @@ the original reference data with `npx convex run dragons:seed`.
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
 - [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
+- [`convex/habitCapabilities.ts`](convex/habitCapabilities.ts) — structured,
+  hand-entered per-(dragon, habit slot) data (active rounds, enemy-damage-received
+  % by level); grows over time as new fields get added, see below
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
 - [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
 - [`src/admin/`](src/admin) — hidden-ish admin pages, linked from a small nav
@@ -55,6 +58,9 @@ the original reference data with `npx convex run dragons:seed`.
     clicking a dragon on the stats page; a pure sandbox, doesn't affect live scoring
   - `SynergyRules.tsx` (`/admin/synergy-rules`) — read-only view of every
     scoring weight and per-dragon kit effect the real engine uses
+  - `HabitBuilder.tsx` (`/admin/habit-builder`) — pick a dragon, pick one of
+    its 5 habits, read the real per-level description, and fill in
+    `convex/habitCapabilities.ts`'s structured fields for it
 - [`src/components/`](src/components) — UI
 
 ## Confirmed game constants

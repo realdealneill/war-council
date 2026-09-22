@@ -5,6 +5,7 @@ const LINKS = [
   { href: "/", label: "App" },
   { href: "/admin/dragon-stats", label: "Dragon Stats" },
   { href: "/admin/synergy-rules", label: "Synergy Rules" },
+  { href: "/admin/habit-builder", label: "Habit Builder" },
 ];
 
 export function AdminNav({ current }: { current: string }) {
