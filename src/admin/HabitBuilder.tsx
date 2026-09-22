@@ -11,6 +11,10 @@ type PctFieldKey =
   | "fireDmgReceivedPct"
   | "tacticalDmgReceivedPct"
   | "physicalDmgReceivedPct"
+  | "enemyStrengthReducedPct"
+  | "enemyInitiativeReducedPct"
+  | "enemyIntelligenceReducedPct"
+  | "enemyInstinctReducedPct"
   | "selfTacticalIncreasePct"
   | "selfPhysicalIncreasePct"
   | "selfFireIncreasePct"
@@ -19,10 +23,16 @@ type PctFieldKey =
   | "selfIntelligenceIncreasePct"
   | "selfInstinctIncreasePct";
 
+const TARGET_COUNTS = [1, 2, 3] as const;
+
 const ENEMY_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "fireDmgReceivedPct", label: "Enemy Fire Damage Received" },
   { key: "tacticalDmgReceivedPct", label: "Enemy Tactical Damage Received" },
   { key: "physicalDmgReceivedPct", label: "Enemy Physical Damage Received" },
+  { key: "enemyStrengthReducedPct", label: "Enemy Strength Reduced" },
+  { key: "enemyInitiativeReducedPct", label: "Enemy Initiative Reduced" },
+  { key: "enemyIntelligenceReducedPct", label: "Enemy Intelligence Reduced" },
+  { key: "enemyInstinctReducedPct", label: "Enemy Instinct Reduced" },
 ];
 
 const SELF_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
@@ -110,6 +120,7 @@ function HabitSlotPicker({
           const hasData =
             !!cap &&
             ((cap.activeRounds?.length ?? 0) > 0 ||
+              cap.enemyTargetCount != null ||
               ALL_PCT_ROWS.some(({ key }) => cap[key]?.some((v) => v != null)));
           return (
             <li key={slot}>
@@ -162,6 +173,27 @@ function RoundsPicker({ value, onChange }: { value: number[]; onChange: (rounds:
             />
             {r}
           </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TargetCountPicker({ value, onChange }: { value: 1 | 2 | 3 | undefined; onChange: (count: 1 | 2 | 3) => void }) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <h3 className="text-xs font-semibold uppercase text-neutral-500">Targets</h3>
+      <div className="flex gap-1">
+        {TARGET_COUNTS.map((n) => (
+          <button
+            key={n}
+            className={`rounded border px-2 py-0.5 text-sm ${
+              value === n ? "border-violet-500 bg-violet-950/40 text-violet-200" : "border-neutral-700 text-neutral-400 hover:bg-neutral-900"
+            }`}
+            onClick={() => onChange(n)}
+          >
+            {n}
+          </button>
         ))}
       </div>
     </div>
@@ -237,7 +269,7 @@ function HabitSlotEditor({
     setActiveRounds(capability?.activeRounds ?? []);
   }, [dragon._id, habitSlot, capability]);
 
-  function save(patch: Partial<Pick<Capability, "activeRounds" | PctFieldKey>>) {
+  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | PctFieldKey>>) {
     void upsert({ dragonId: dragon._id, habitSlot, ...patch });
   }
 
@@ -285,6 +317,7 @@ function HabitSlotEditor({
 
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
             <h2 className="mb-3 text-sm font-semibold text-neutral-200">Enemy effects, by level</h2>
+            <TargetCountPicker value={capability?.enemyTargetCount} onChange={(count) => save({ enemyTargetCount: count })} />
             {ENEMY_PCT_ROWS.map(({ key, label }) => (
               <PctRow
                 key={key}

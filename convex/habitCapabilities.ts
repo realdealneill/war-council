@@ -27,9 +27,14 @@ export const upsert = mutation({
     habitSlot: v.number(),
     activeRounds: v.optional(v.array(v.number())),
     // Enemy-facing
+    enemyTargetCount: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))),
     fireDmgReceivedPct: pctByLevel,
     tacticalDmgReceivedPct: pctByLevel,
     physicalDmgReceivedPct: pctByLevel,
+    enemyStrengthReducedPct: pctByLevel,
+    enemyInitiativeReducedPct: pctByLevel,
+    enemyIntelligenceReducedPct: pctByLevel,
+    enemyInstinctReducedPct: pctByLevel,
     // Self modifiers
     selfTacticalIncreasePct: pctByLevel,
     selfPhysicalIncreasePct: pctByLevel,

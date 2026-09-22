@@ -52,10 +52,18 @@ export const habitCapabilityFields = {
   habitSlot: v.number(), // 1-5
   // Which of combat's rounds (1-10) this habit is actually active during.
   activeRounds: v.array(v.number()),
-  // Enemy-facing: how much this habit raises what the target enemy receives.
+  // How many enemy dragons this habit's enemy-facing rows below apply to
+  // (1-3) — one setting for the whole habit, not per level or per row.
+  enemyTargetCount: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))),
+  // Enemy-facing: how much this habit raises what the target enemy(s) receive,
+  // or reduces their stats.
   fireDmgReceivedPct: v.optional(pctByLevel),
   tacticalDmgReceivedPct: v.optional(pctByLevel),
   physicalDmgReceivedPct: v.optional(pctByLevel),
+  enemyStrengthReducedPct: v.optional(pctByLevel),
+  enemyInitiativeReducedPct: v.optional(pctByLevel),
+  enemyIntelligenceReducedPct: v.optional(pctByLevel),
+  enemyInstinctReducedPct: v.optional(pctByLevel),
   // Self modifiers: this dragon's own damage-dealt/stat increases.
   selfTacticalIncreasePct: v.optional(pctByLevel),
   selfPhysicalIncreasePct: v.optional(pctByLevel),

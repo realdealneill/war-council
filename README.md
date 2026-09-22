@@ -47,9 +47,11 @@ the original reference data with `npx convex run dragons:seed`.
 - [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
 - [`convex/habitCapabilities.ts`](convex/habitCapabilities.ts) — structured,
-  hand-entered per-(dragon, habit slot) data: active rounds, enemy-damage-received
-  % by level (Fire/Tactical/Physical), and self modifier % by level (Tactical/
-  Physical/Fire Increase, Strength/Initiative/Intelligence/Instinct Increase);
+  hand-entered per-(dragon, habit slot) data: active rounds, how many enemy
+  dragons it targets (1-3), enemy-facing % by level (Fire/Tactical/Physical
+  Damage Received, Strength/Initiative/Intelligence/Instinct Reduced), and
+  self modifier % by level (Tactical/Physical/Fire Increase, Strength/
+  Initiative/Intelligence/Instinct Increase);
   grows over time as new fields get added, see below
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
 - [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
