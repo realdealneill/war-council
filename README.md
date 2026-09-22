@@ -36,8 +36,9 @@ the original reference data with `npx convex run dragons:seed`.
 - [`src/engine/`](src/engine) — the scoring/optimization algorithm:
   - `power.ts` — power estimation (rarity/star/level, still the old guessed
     formula — see below), goal-adjusted power
-  - `powerFromStars.ts` / `powerFromHabits.ts` — **confirmed** real power
-    values by rarity, from Star Rank and from Habits (see "Confirmed game
+  - `powerFromStars.ts` / `powerFromHabits.ts` / `powerFromLevel.ts` —
+    **confirmed** (Level: mostly bounded extrapolation) real power values
+    by rarity, from Star Rank, Habits, and Level (see "Confirmed game
     constants" below) — not yet wired into `power.ts`/live scoring, only
     into the admin sandbox
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
@@ -73,16 +74,26 @@ looks similar but is marked as a guess:
   real, flat power per habit level (1-5) by rarity; sum the table's value
   for each currently-unlocked habit at its own level (a legendary with 3
   habits unlocked, all level 3, gets 1500 × 3 = 4500). No mythic data.
+- **Power from Level** ([`src/engine/powerFromLevel.ts`](src/engine/powerFromLevel.ts)) —
+  the shakiest of the three: real at the level-50 cap for every rarity
+  (rare 19,000 / epic 26,000 / legendary 33,000) and at rare's own levels
+  41/42/46-49, everything else is a bounded power-law extrapolation
+  (`maxPower × (level/50)^1.25`) — a raw cubic, unlike Power-from-Stars,
+  blows up past 1,000,000 by level 1 when fit to just the known tail
+  points, so this uses a shape anchored at the known cap instead. Epic and
+  Legendary reuse the same exponent scaled to their own cap, same
+  "shape shared, scaled by a known endpoint" approach as Power-from-Stars'
+  epic/rare rows. Treat any single number here as a rough scale, not gospel.
 - **Stat growth per Star Rank** (`src/admin/DragonDetail.tsx`) — +10%/+15%/+20%
   of base per star for rare/epic/legendary, starting at ★2, with an extra
   +5% for ★7-10. Doesn't move with Level or Habits at all. Mythic's rate is
   extrapolated, not confirmed.
 
-Power's contribution from Level, and Stats' mythic rate, are still guesses
-— see the tunable inputs on `DragonDetail.tsx` for those. Once Level is
-confirmed too, Total Power will just be the sum of all three.
-None of this (confirmed or guessed) is wired into `src/engine/power.ts` or
-real army scoring yet; that's still the original guessed formula.
+Total Power (Stars + Habits + Level) is now fully sourced from confirmed
+data in `src/admin/DragonDetail.tsx` — no more free-tunable guesses for
+Power, though Level's numbers carry the caveat above. Stats' mythic rate
+is still a guess. None of this is wired into `src/engine/power.ts` or real
+army scoring yet; that's still the original guessed formula.
 
 ## `reference/`
 
