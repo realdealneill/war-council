@@ -49,6 +49,26 @@ const ALL_PCT_ROWS = [...ENEMY_PCT_ROWS, ...SELF_PCT_ROWS];
 
 const EMPTY_ROW: (number | null)[] = [null, null, null, null, null];
 
+// The dropdown options for "Requires Effect" / "Buffed by Effect", pulled
+// from the same effect catalog the rest of the app uses (MODEL.EFFECTS —
+// see src/engine/effects.ts and the EffectId union in src/types.ts), so this
+// never needs its own separate list to maintain.
+const EFFECT_LABELS: Record<string, string> = {};
+for (const group of [MODEL.EFFECTS.applies, MODEL.EFFECTS.grants]) {
+  for (const [id, full] of Object.entries(group)) {
+    if (!(id in EFFECT_LABELS)) EFFECT_LABELS[id] = full.split(" — ")[0];
+  }
+}
+const EFFECT_OPTIONS = Object.keys(EFFECT_LABELS).sort((a, b) => EFFECT_LABELS[a].localeCompare(EFFECT_LABELS[b]));
+
+type EffectLink = { requiresEffect?: string; buffedByEffect?: string };
+
+const TABS = [
+  { key: "enemy", label: "Enemy effects" },
+  { key: "self", label: "Self modifiers" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
+
 type Dragon = Doc<"dragons">;
 type Capability = Doc<"habitCapabilities">;
 
@@ -121,6 +141,7 @@ function HabitSlotPicker({
             !!cap &&
             ((cap.activeRounds?.length ?? 0) > 0 ||
               cap.enemyTargetCount != null ||
+              (cap.effectLinks != null && Object.keys(cap.effectLinks).length > 0) ||
               ALL_PCT_ROWS.some(({ key }) => cap[key]?.some((v) => v != null)));
           return (
             <li key={slot}>
@@ -200,27 +221,71 @@ function TargetCountPicker({ value, onChange }: { value: 1 | 2 | 3 | undefined; 
   );
 }
 
+function EffectSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs text-neutral-500">
+      {label}
+      <select
+        className="rounded border border-neutral-700 bg-neutral-950 px-1 py-0.5 text-xs text-neutral-300"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
+      >
+        <option value="">—</option>
+        {EFFECT_OPTIONS.map((id) => (
+          <option key={id} value={id}>
+            {EFFECT_LABELS[id]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function PctRow({
   label,
   values,
+  effectLink,
   onCommit,
   onClear,
+  onEffectLinkChange,
 }: {
   label: string;
   values: (number | null)[];
+  effectLink: EffectLink | undefined;
   onCommit: (values: (number | null)[]) => void;
   onClear: () => void;
+  onEffectLinkChange: (patch: EffectLink) => void;
 }) {
   const [local, setLocal] = useState(values);
   useEffect(() => setLocal(values), [values]);
 
   return (
-    <div className="mb-3">
+    <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-sm text-neutral-300">{label}</span>
         <button className="text-xs text-neutral-500 underline hover:text-red-400" onClick={onClear}>
           Clear row
         </button>
+      </div>
+      <div className="mb-1.5 flex flex-wrap gap-3">
+        <EffectSelect
+          label="Requires"
+          value={effectLink?.requiresEffect}
+          onChange={(v) => onEffectLinkChange({ requiresEffect: v })}
+        />
+        <EffectSelect
+          label="Buffed by"
+          value={effectLink?.buffedByEffect}
+          onChange={(v) => onEffectLinkChange({ buffedByEffect: v })}
+        />
       </div>
       <div className="flex gap-2">
         {local.map((v, i) => (
@@ -269,8 +334,18 @@ function HabitSlotEditor({
     setActiveRounds(capability?.activeRounds ?? []);
   }, [dragon._id, habitSlot, capability]);
 
-  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | PctFieldKey>>) {
+  const [activeTab, setActiveTab] = useState<TabKey>("enemy");
+  useEffect(() => {
+    setActiveTab("enemy");
+  }, [dragon._id, habitSlot]);
+
+  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | "effectLinks" | PctFieldKey>>) {
     void upsert({ dragonId: dragon._id, habitSlot, ...patch });
+  }
+
+  function saveEffectLink(rowKey: PctFieldKey, patch: EffectLink) {
+    const links = capability?.effectLinks ?? {};
+    save({ effectLinks: { ...links, [rowKey]: { ...links[rowKey], ...patch } } });
   }
 
   return (
@@ -288,59 +363,80 @@ function HabitSlotEditor({
       <h1 className="mb-1 text-xl font-bold">{dragon.name} — Habit {habitSlot}</h1>
       <p className="mb-4 text-sm text-neutral-500">★{unlockStar} to unlock · {dragon.rarity} · {dragon.breed}</p>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="sticky top-0 z-10 mb-6 rounded-lg border border-neutral-800 bg-neutral-950/95 p-4 shadow-lg shadow-black/40 backdrop-blur">
+        <h2 className="mb-2 text-sm font-semibold text-neutral-200">Description (by level)</h2>
+        {habit ? (
+          <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-neutral-300">
+            {habit.desc.map((d, i) => (
+              <li key={i} className="min-w-[180px] flex-1">
+                <span className="text-xs font-semibold text-neutral-500">Lv{i + 1}:</span> {d}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-neutral-500">No habit text found for this dragon/slot.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-          <h2 className="mb-2 text-sm font-semibold text-neutral-200">Description (by level)</h2>
-          {habit ? (
-            <ul className="flex flex-col gap-2 text-sm text-neutral-300">
-              {habit.desc.map((d, i) => (
-                <li key={i}>
-                  <span className="text-xs font-semibold text-neutral-500">Lv{i + 1}:</span> {d}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-neutral-500">No habit text found for this dragon/slot.</p>
-          )}
+          <RoundsPicker
+            value={activeRounds}
+            onChange={(rounds) => {
+              setActiveRounds(rounds);
+              save({ activeRounds: rounds });
+            }}
+          />
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <RoundsPicker
-              value={activeRounds}
-              onChange={(rounds) => {
-                setActiveRounds(rounds);
-                save({ activeRounds: rounds });
-              }}
-            />
-          </div>
+        <div className="flex gap-1 border-b border-neutral-800 text-sm">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`-mb-px rounded-t px-3 py-1.5 border-b-2 ${
+                activeTab === t.key
+                  ? "border-violet-500 text-violet-200"
+                  : "border-transparent text-neutral-400 hover:text-neutral-200"
+              }`}
+              onClick={() => setActiveTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Enemy effects, by level</h2>
-            <TargetCountPicker value={capability?.enemyTargetCount} onChange={(count) => save({ enemyTargetCount: count })} />
-            {ENEMY_PCT_ROWS.map(({ key, label }) => (
-              <PctRow
-                key={key}
-                label={label}
-                values={capability?.[key] ?? EMPTY_ROW}
-                onCommit={(values) => save({ [key]: values } as never)}
-                onClear={() => save({ [key]: EMPTY_ROW } as never)}
-              />
-            ))}
-          </div>
-
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Self modifiers, by level</h2>
-            {SELF_PCT_ROWS.map(({ key, label }) => (
-              <PctRow
-                key={key}
-                label={label}
-                values={capability?.[key] ?? EMPTY_ROW}
-                onCommit={(values) => save({ [key]: values } as never)}
-                onClear={() => save({ [key]: EMPTY_ROW } as never)}
-              />
-            ))}
-          </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
+          {activeTab === "enemy" && (
+            <>
+              <TargetCountPicker value={capability?.enemyTargetCount} onChange={(count) => save({ enemyTargetCount: count })} />
+              {ENEMY_PCT_ROWS.map(({ key, label }) => (
+                <PctRow
+                  key={key}
+                  label={label}
+                  values={capability?.[key] ?? EMPTY_ROW}
+                  effectLink={capability?.effectLinks?.[key]}
+                  onCommit={(values) => save({ [key]: values } as never)}
+                  onClear={() => save({ [key]: EMPTY_ROW } as never)}
+                  onEffectLinkChange={(patch) => saveEffectLink(key, patch)}
+                />
+              ))}
+            </>
+          )}
+          {activeTab === "self" && (
+            <>
+              {SELF_PCT_ROWS.map(({ key, label }) => (
+                <PctRow
+                  key={key}
+                  label={label}
+                  values={capability?.[key] ?? EMPTY_ROW}
+                  effectLink={capability?.effectLinks?.[key]}
+                  onCommit={(values) => save({ [key]: values } as never)}
+                  onClear={() => save({ [key]: EMPTY_ROW } as never)}
+                  onEffectLinkChange={(patch) => saveEffectLink(key, patch)}
+                />
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>

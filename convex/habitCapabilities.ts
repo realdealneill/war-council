@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { habitCapabilityFields } from "./schema";
+import { effectLink, habitCapabilityFields } from "./schema";
 
 const habitCapabilityDoc = v.object({ ...habitCapabilityFields, _id: v.id("habitCapabilities"), _creationTime: v.number() });
 
@@ -43,6 +43,7 @@ export const upsert = mutation({
     selfInitiativeIncreasePct: pctByLevel,
     selfIntelligenceIncreasePct: pctByLevel,
     selfInstinctIncreasePct: pctByLevel,
+    effectLinks: v.optional(v.record(v.string(), effectLink)),
   },
   returns: v.null(),
   handler: async (ctx, { dragonId, habitSlot, ...patch }) => {

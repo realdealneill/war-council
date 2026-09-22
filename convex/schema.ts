@@ -42,6 +42,17 @@ export const dragonFields = {
 // A percentage value per upgrade level (1-5), null where not yet filled in.
 const pctByLevel = v.array(v.union(v.number(), v.null()));
 
+// An optional condition on one percentage row: an effect that must be present
+// on the target for the row to apply at all, and/or an effect that doubles
+// it when active (the game mostly just doubles rather than using a distinct
+// value — see src/admin/HabitBuilder.tsx). Keyed by row field name (e.g.
+// "fireDmgReceivedPct") in `effectLinks` below, so adding a new percentage
+// row never requires its own pair of schema fields for this.
+export const effectLink = v.object({
+  requiresEffect: v.optional(v.string()),
+  buffedByEffect: v.optional(v.string()),
+});
+
 // Structured, hand-entered capability data for one dragon's one habit slot
 // (1-5) — filled in via /admin/habit-builder while reading the habit's real
 // wording (src/data/generated/habits.json). Meant to grow: new percentage
@@ -72,6 +83,8 @@ export const habitCapabilityFields = {
   selfInitiativeIncreasePct: v.optional(pctByLevel),
   selfIntelligenceIncreasePct: v.optional(pctByLevel),
   selfInstinctIncreasePct: v.optional(pctByLevel),
+  // Per-row Requires Effect / Buffed by Effect, see `effectLink` above.
+  effectLinks: v.optional(v.record(v.string(), effectLink)),
 };
 
 export default defineSchema({
