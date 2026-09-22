@@ -52,9 +52,18 @@ export const habitCapabilityFields = {
   habitSlot: v.number(), // 1-5
   // Which of combat's rounds (1-10) this habit is actually active during.
   activeRounds: v.array(v.number()),
+  // Enemy-facing: how much this habit raises what the target enemy receives.
   fireDmgReceivedPct: v.optional(pctByLevel),
   tacticalDmgReceivedPct: v.optional(pctByLevel),
   physicalDmgReceivedPct: v.optional(pctByLevel),
+  // Self modifiers: this dragon's own damage-dealt/stat increases.
+  selfTacticalIncreasePct: v.optional(pctByLevel),
+  selfPhysicalIncreasePct: v.optional(pctByLevel),
+  selfFireIncreasePct: v.optional(pctByLevel),
+  selfStrengthIncreasePct: v.optional(pctByLevel),
+  selfInitiativeIncreasePct: v.optional(pctByLevel),
+  selfIntelligenceIncreasePct: v.optional(pctByLevel),
+  selfInstinctIncreasePct: v.optional(pctByLevel),
 };
 
 export default defineSchema({

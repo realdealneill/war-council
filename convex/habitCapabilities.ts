@@ -14,17 +14,30 @@ export const listForDragon = query({
       .collect(),
 });
 
+const pctByLevel = v.optional(v.array(v.union(v.number(), v.null())));
+
 // Insert-or-patch for one (dragon, habit slot) — the row doesn't have to
 // exist yet (a dragon's 5 habit slots aren't pre-seeded, only created the
-// first time something is saved for them).
+// first time something is saved for them). Every field but the two key
+// fields is optional so a caller can patch just one thing (e.g. one
+// percentage row) without having to resend everything else.
 export const upsert = mutation({
   args: {
     dragonId: v.id("dragons"),
     habitSlot: v.number(),
     activeRounds: v.optional(v.array(v.number())),
-    fireDmgReceivedPct: v.optional(v.array(v.union(v.number(), v.null()))),
-    tacticalDmgReceivedPct: v.optional(v.array(v.union(v.number(), v.null()))),
-    physicalDmgReceivedPct: v.optional(v.array(v.union(v.number(), v.null()))),
+    // Enemy-facing
+    fireDmgReceivedPct: pctByLevel,
+    tacticalDmgReceivedPct: pctByLevel,
+    physicalDmgReceivedPct: pctByLevel,
+    // Self modifiers
+    selfTacticalIncreasePct: pctByLevel,
+    selfPhysicalIncreasePct: pctByLevel,
+    selfFireIncreasePct: pctByLevel,
+    selfStrengthIncreasePct: pctByLevel,
+    selfInitiativeIncreasePct: pctByLevel,
+    selfIntelligenceIncreasePct: pctByLevel,
+    selfInstinctIncreasePct: pctByLevel,
   },
   returns: v.null(),
   handler: async (ctx, { dragonId, habitSlot, ...patch }) => {

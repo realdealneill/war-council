@@ -7,11 +7,35 @@ import { HABIT_TEXT, MODEL } from "../data";
 
 const ROUNDS = Array.from({ length: 10 }, (_, i) => i + 1);
 
-const PCT_ROWS: { key: "fireDmgReceivedPct" | "tacticalDmgReceivedPct" | "physicalDmgReceivedPct"; label: string }[] = [
+type PctFieldKey =
+  | "fireDmgReceivedPct"
+  | "tacticalDmgReceivedPct"
+  | "physicalDmgReceivedPct"
+  | "selfTacticalIncreasePct"
+  | "selfPhysicalIncreasePct"
+  | "selfFireIncreasePct"
+  | "selfStrengthIncreasePct"
+  | "selfInitiativeIncreasePct"
+  | "selfIntelligenceIncreasePct"
+  | "selfInstinctIncreasePct";
+
+const ENEMY_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "fireDmgReceivedPct", label: "Enemy Fire Damage Received" },
   { key: "tacticalDmgReceivedPct", label: "Enemy Tactical Damage Received" },
   { key: "physicalDmgReceivedPct", label: "Enemy Physical Damage Received" },
 ];
+
+const SELF_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
+  { key: "selfTacticalIncreasePct", label: "Self Tactical Increase" },
+  { key: "selfPhysicalIncreasePct", label: "Self Physical Increase" },
+  { key: "selfFireIncreasePct", label: "Self Fire Increase" },
+  { key: "selfStrengthIncreasePct", label: "Self Strength Increase" },
+  { key: "selfInitiativeIncreasePct", label: "Self Initiative Increase" },
+  { key: "selfIntelligenceIncreasePct", label: "Self Intelligence Increase" },
+  { key: "selfInstinctIncreasePct", label: "Self Instinct Increase" },
+];
+
+const ALL_PCT_ROWS = [...ENEMY_PCT_ROWS, ...SELF_PCT_ROWS];
 
 const EMPTY_ROW: (number | null)[] = [null, null, null, null, null];
 
@@ -86,9 +110,7 @@ function HabitSlotPicker({
           const hasData =
             !!cap &&
             ((cap.activeRounds?.length ?? 0) > 0 ||
-              [cap.fireDmgReceivedPct, cap.tacticalDmgReceivedPct, cap.physicalDmgReceivedPct].some((row) =>
-                row?.some((v) => v != null)
-              ));
+              ALL_PCT_ROWS.some(({ key }) => cap[key]?.some((v) => v != null)));
           return (
             <li key={slot}>
               <button
@@ -215,7 +237,7 @@ function HabitSlotEditor({
     setActiveRounds(capability?.activeRounds ?? []);
   }, [dragon._id, habitSlot, capability]);
 
-  function save(patch: Partial<Pick<Capability, "activeRounds" | "fireDmgReceivedPct" | "tacticalDmgReceivedPct" | "physicalDmgReceivedPct">>) {
+  function save(patch: Partial<Pick<Capability, "activeRounds" | PctFieldKey>>) {
     void upsert({ dragonId: dragon._id, habitSlot, ...patch });
   }
 
@@ -262,8 +284,21 @@ function HabitSlotEditor({
           </div>
 
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Percentages by level</h2>
-            {PCT_ROWS.map(({ key, label }) => (
+            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Enemy effects, by level</h2>
+            {ENEMY_PCT_ROWS.map(({ key, label }) => (
+              <PctRow
+                key={key}
+                label={label}
+                values={capability?.[key] ?? EMPTY_ROW}
+                onCommit={(values) => save({ [key]: values } as never)}
+                onClear={() => save({ [key]: EMPTY_ROW } as never)}
+              />
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
+            <h2 className="mb-3 text-sm font-semibold text-neutral-200">Self modifiers, by level</h2>
+            {SELF_PCT_ROWS.map(({ key, label }) => (
               <PctRow
                 key={key}
                 label={label}
