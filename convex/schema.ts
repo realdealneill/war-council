@@ -64,6 +64,26 @@ export const allyTarget = v.union(
   v.object({ kind: v.literal("lane"), lane: v.union(v.literal("left"), v.literal("right"), v.literal("vanguard")) })
 );
 
+// One chance-based "Effect RNG" entry — e.g. Antares Habit 1's real wording:
+// "Rounds 1,3,6,8: 12.5% chance to Overwhelm 1 Enemy in any lane for 2
+// rounds (prioritizes the Fire Damage dealers)". A single habit can hold
+// several of these (that same habit also has a Stagger entry on rounds
+// 2,4,7,9), so they live in the `rngEffects` array below rather than as
+// fixed fields — unlike the flat percentage rows, there's no bounded set of
+// them to name ahead of time. `target` reuses the same count-or-lane shape
+// as `allyTarget` above (it applies to enemy debuffs the same way it does
+// to ally buffs). Chance scales by habit level like the percentage rows do;
+// rounds and duration don't (matches every real example seen so far).
+export const rngEffectEntry = v.object({
+  effect: v.optional(v.string()),
+  direction: v.optional(v.union(v.literal("buff"), v.literal("debuff"))),
+  target: v.optional(allyTarget),
+  durationRounds: v.optional(v.number()),
+  rounds: v.array(v.number()),
+  chancePctByLevel: pctByLevel,
+  notes: v.optional(v.string()),
+});
+
 // Structured, hand-entered capability data for one dragon's one habit slot
 // (1-5) — filled in via /admin/habit-builder while reading the habit's real
 // wording (src/data/generated/habits.json). Meant to grow: new percentage
@@ -106,6 +126,8 @@ export const habitCapabilityFields = {
   allyIntelligenceIncreasePct: v.optional(pctByLevel),
   allyInstinctIncreasePct: v.optional(pctByLevel),
   allyDamageReductionPct: v.optional(pctByLevel),
+  // Chance-based effect procs (Overwhelm/Stun/Burn/etc.) — see `rngEffectEntry` above.
+  rngEffects: v.optional(v.array(rngEffectEntry)),
   // Per-row Requires Effect / Buffed by Effect, see `effectLink` above.
   effectLinks: v.optional(v.record(v.string(), effectLink)),
 };

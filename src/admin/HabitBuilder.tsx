@@ -45,6 +45,22 @@ const ALLY_LANES: { key: "left" | "right" | "vanguard"; label: string }[] = [
   { key: "vanguard", label: "Vanguard" },
 ];
 
+// An Effect RNG entry's target reuses the exact same count-or-lane shape —
+// an enemy debuff can hit "1 Enemy in any lane" (count) or a specific lane
+// just as an ally buff can.
+type RngTarget = AllyTarget;
+
+type RngEffectEntry = {
+  effect?: string;
+  direction?: "buff" | "debuff";
+  target?: RngTarget;
+  durationRounds?: number;
+  rounds: number[];
+  chancePctByLevel: (number | null)[];
+  notes?: string;
+};
+const EMPTY_RNG_ENTRY: RngEffectEntry = { direction: "debuff", rounds: [], chancePctByLevel: [null, null, null, null, null] };
+
 const ENEMY_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "fireDmgReceivedPct", label: "Enemy Fire Damage Received" },
   { key: "tacticalDmgReceivedPct", label: "Enemy Tactical Damage Received" },
@@ -99,6 +115,7 @@ const TABS = [
   { key: "enemy", label: "Enemy effects" },
   { key: "self", label: "Self modifiers" },
   { key: "ally", label: "Ally modifiers" },
+  { key: "rng", label: "Effect RNG" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -175,6 +192,7 @@ function HabitSlotPicker({
             ((cap.activeRounds?.length ?? 0) > 0 ||
               cap.enemyTargetCount != null ||
               cap.allyTarget != null ||
+              (cap.rngEffects?.length ?? 0) > 0 ||
               (cap.effectLinks != null && Object.keys(cap.effectLinks).length > 0) ||
               ALL_PCT_ROWS.some(({ key }) => cap[key]?.some((v) => v != null)));
           return (
@@ -198,12 +216,20 @@ function HabitSlotPicker({
   );
 }
 
-function RoundsPicker({ value, onChange }: { value: number[]; onChange: (rounds: number[]) => void }) {
+function RoundsPicker({
+  title = "Active rounds",
+  value,
+  onChange,
+}: {
+  title?: string;
+  value: number[];
+  onChange: (rounds: number[]) => void;
+}) {
   const set = new Set(value);
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase text-neutral-500">Active rounds</h3>
+        <h3 className="text-xs font-semibold uppercase text-neutral-500">{title}</h3>
         <div className="flex gap-2">
           <button className="text-xs text-violet-300 underline hover:text-violet-200" onClick={() => onChange(ROUNDS)}>
             Select all
@@ -261,31 +287,46 @@ function targetButtonClass(active: boolean) {
   }`;
 }
 
+function TargetPicker({
+  value,
+  onChange,
+  subject,
+}: {
+  value: AllyTarget | undefined;
+  onChange: (target: AllyTarget) => void;
+  subject: "Ally" | "Enemy";
+}) {
+  const plural = subject === "Ally" ? "Allies" : "Enemies";
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {TARGET_COUNTS.map((n) => (
+        <button
+          key={`count-${n}`}
+          className={targetButtonClass(value?.kind === "count" && value.count === n)}
+          onClick={() => onChange({ kind: "count", count: n })}
+        >
+          {n} {n === 1 ? subject : plural}
+        </button>
+      ))}
+      <span className="mx-1 text-neutral-700">|</span>
+      {ALLY_LANES.map((lane) => (
+        <button
+          key={lane.key}
+          className={targetButtonClass(value?.kind === "lane" && value.lane === lane.key)}
+          onClick={() => onChange({ kind: "lane", lane: lane.key })}
+        >
+          {lane.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AllyTargetPicker({ value, onChange }: { value: AllyTarget | undefined; onChange: (target: AllyTarget) => void }) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h3 className="text-xs font-semibold uppercase text-neutral-500">Targets</h3>
-      <div className="flex flex-wrap items-center gap-1">
-        {TARGET_COUNTS.map((n) => (
-          <button
-            key={`count-${n}`}
-            className={targetButtonClass(value?.kind === "count" && value.count === n)}
-            onClick={() => onChange({ kind: "count", count: n })}
-          >
-            {n} {n === 1 ? "Ally" : "Allies"}
-          </button>
-        ))}
-        <span className="mx-1 text-neutral-700">|</span>
-        {ALLY_LANES.map((lane) => (
-          <button
-            key={lane.key}
-            className={targetButtonClass(value?.kind === "lane" && value.lane === lane.key)}
-            onClick={() => onChange({ kind: "lane", lane: lane.key })}
-          >
-            {lane.label}
-          </button>
-        ))}
-      </div>
+      <TargetPicker value={value} onChange={onChange} subject="Ally" />
     </div>
   );
 }
@@ -380,6 +421,110 @@ function PctRow({
   );
 }
 
+function RngEffectCard({
+  entry,
+  onChange,
+  onRemove,
+}: {
+  entry: RngEffectEntry;
+  onChange: (patch: Partial<RngEffectEntry>) => void;
+  onRemove: () => void;
+}) {
+  const [chanceLocal, setChanceLocal] = useState(entry.chancePctByLevel);
+  useEffect(() => setChanceLocal(entry.chancePctByLevel), [entry.chancePctByLevel]);
+  const [notesLocal, setNotesLocal] = useState(entry.notes ?? "");
+  useEffect(() => setNotesLocal(entry.notes ?? ""), [entry.notes]);
+
+  const subject = entry.direction === "buff" ? "Ally" : "Enemy";
+
+  return (
+    <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-sm text-neutral-200"
+            value={entry.effect ?? ""}
+            onChange={(e) => onChange({ effect: e.target.value === "" ? undefined : e.target.value })}
+          >
+            <option value="">Pick effect…</option>
+            {EFFECT_OPTIONS.map((id) => (
+              <option key={id} value={id}>
+                {EFFECT_LABELS[id]}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-1">
+            <button className={targetButtonClass(entry.direction !== "buff")} onClick={() => onChange({ direction: "debuff" })}>
+              Enemy Debuff
+            </button>
+            <button className={targetButtonClass(entry.direction === "buff")} onClick={() => onChange({ direction: "buff" })}>
+              Ally Buff
+            </button>
+          </div>
+        </div>
+        <button className="text-xs text-neutral-500 underline hover:text-red-400" onClick={onRemove}>
+          Remove
+        </button>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <TargetPicker value={entry.target} onChange={(target) => onChange({ target })} subject={subject} />
+        <label className="flex items-center gap-1 text-xs text-neutral-500">
+          for
+          <input
+            type="number"
+            min={0}
+            value={entry.durationRounds ?? ""}
+            onChange={(e) => onChange({ durationRounds: e.target.value === "" ? undefined : Number(e.target.value) })}
+            className="w-14 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right text-sm text-neutral-100"
+          />
+          round(s)
+        </label>
+      </div>
+
+      <div className="mb-3">
+        <RoundsPicker title="Procs on rounds" value={entry.rounds} onChange={(rounds) => onChange({ rounds })} />
+      </div>
+
+      <div className="mb-3">
+        <label className="mb-1 block text-xs text-neutral-500">Priority / notes</label>
+        <input
+          type="text"
+          value={notesLocal}
+          onChange={(e) => setNotesLocal(e.target.value)}
+          onBlur={() => onChange({ notes: notesLocal || undefined })}
+          placeholder="e.g. prioritizes the Fire Damage dealers"
+          className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100"
+        />
+      </div>
+
+      <div>
+        <span className="mb-1 block text-sm text-neutral-300">Chance % by level</span>
+        <div className="flex gap-2">
+          {chanceLocal.map((v, i) => (
+            <label key={i} className="flex flex-col items-center text-xs text-neutral-500">
+              Lv{i + 1}
+              <input
+                type="number"
+                step={0.1}
+                value={v ?? ""}
+                onChange={(e) => {
+                  const next = [...chanceLocal];
+                  next[i] = e.target.value === "" ? null : Number(e.target.value);
+                  setChanceLocal(next);
+                }}
+                onBlur={() => onChange({ chancePctByLevel: chanceLocal })}
+                className="w-16 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-right text-sm text-neutral-100"
+                placeholder="%"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HabitSlotEditor({
   dragon,
   habitSlot,
@@ -408,13 +553,28 @@ function HabitSlotEditor({
     setActiveTab("enemy");
   }, [dragon._id, habitSlot]);
 
-  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | "allyTarget" | "effectLinks" | PctFieldKey>>) {
+  function save(
+    patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | "allyTarget" | "rngEffects" | "effectLinks" | PctFieldKey>>
+  ) {
     void upsert({ dragonId: dragon._id, habitSlot, ...patch });
   }
 
   function saveEffectLink(rowKey: PctFieldKey, patch: EffectLink) {
     const links = capability?.effectLinks ?? {};
     save({ effectLinks: { ...links, [rowKey]: { ...links[rowKey], ...patch } } });
+  }
+
+  function updateRngEffect(index: number, patch: Partial<RngEffectEntry>) {
+    const next = (capability?.rngEffects ?? []).map((e, i) => (i === index ? { ...e, ...patch } : e));
+    save({ rngEffects: next });
+  }
+
+  function addRngEffect() {
+    save({ rngEffects: [...(capability?.rngEffects ?? []), EMPTY_RNG_ENTRY] });
+  }
+
+  function removeRngEffect(index: number) {
+    save({ rngEffects: (capability?.rngEffects ?? []).filter((_, i) => i !== index) });
   }
 
   return (
@@ -520,6 +680,24 @@ function HabitSlotEditor({
                   onEffectLinkChange={(patch) => saveEffectLink(key, patch)}
                 />
               ))}
+            </>
+          )}
+          {activeTab === "rng" && (
+            <>
+              {(capability?.rngEffects ?? []).map((entry, i) => (
+                <RngEffectCard
+                  key={i}
+                  entry={entry}
+                  onChange={(patch) => updateRngEffect(i, patch)}
+                  onRemove={() => removeRngEffect(i)}
+                />
+              ))}
+              <button
+                className="rounded border border-dashed border-neutral-700 px-3 py-1.5 text-sm text-neutral-400 hover:border-violet-500 hover:text-violet-200"
+                onClick={addRngEffect}
+              >
+                + Add effect
+              </button>
             </>
           )}
         </div>

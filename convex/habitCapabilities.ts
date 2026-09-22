@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { allyTarget, effectLink, habitCapabilityFields } from "./schema";
+import { allyTarget, effectLink, habitCapabilityFields, rngEffectEntry } from "./schema";
 
 const habitCapabilityDoc = v.object({ ...habitCapabilityFields, _id: v.id("habitCapabilities"), _creationTime: v.number() });
 
@@ -54,6 +54,7 @@ export const upsert = mutation({
     allyIntelligenceIncreasePct: pctByLevel,
     allyInstinctIncreasePct: pctByLevel,
     allyDamageReductionPct: pctByLevel,
+    rngEffects: v.optional(v.array(rngEffectEntry)),
     effectLinks: v.optional(v.record(v.string(), effectLink)),
   },
   returns: v.null(),

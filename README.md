@@ -63,7 +63,15 @@ the original reference data with `npx convex run dragons:seed`.
   (doubles the row's values while active — the game mostly just doubles
   rather than using a distinct number), stored in one `effectLinks` map
   keyed by row name so new rows never need their own pair of schema fields
-  for this; grows over time as new fields get added, see below
+  for this. A separate `rngEffects` array holds chance-based effect procs
+  (e.g. "12.5% chance to Overwhelm 1 Enemy for 2 rounds on Rounds 1,3,6,8")
+  — effect, buff/debuff direction, target (same headcount-or-lane shape as
+  `allyTarget`), duration, its own rounds, and chance % by level, entered
+  free-form since a habit can carry more than one of these (e.g. one entry
+  per proc'd effect); the eventual goal is rolling all of a formation's RNG
+  entries together into a full 10-round chance that a given effect (Burn,
+  say) lands at least once, and how many times; grows over time as new
+  fields get added, see below
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
 - [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
 - [`src/admin/`](src/admin) — hidden-ish admin pages, linked from a small nav
