@@ -85,9 +85,13 @@ looks similar but is marked as a guess:
   "shape shared, scaled by a known endpoint" approach as Power-from-Stars'
   epic/rare rows. Treat any single number here as a rough scale, not gospel.
 - **Stat growth per Star Rank** (`src/admin/DragonDetail.tsx`) — +10%/+15%/+20%
-  of base per star for rare/epic/legendary, starting at ★2, with an extra
-  +5% for ★7-10. Doesn't move with Level or Habits at all. Mythic's rate is
-  extrapolated, not confirmed.
+  of base per star for rare/epic/legendary, starting at ★2. The ★7-10
+  late-star bonus is per-rarity, not a flat +5% for everyone (that was an
+  unverified extrapolation from legendary and it overshot rare): legendary
+  is +5% (confirmed via real ★7/★8 data), rare is +2.5% (confirmed —
+  Neill's own ★10 rare data lands on exactly base × 2.000), epic's is being
+  checked separately, mythic has no data. Doesn't move with Level or
+  Habits at all.
 
 Total Power (Stars + Habits + Level) is now fully sourced from confirmed
 data in `src/admin/DragonDetail.tsx` — no more free-tunable guesses for

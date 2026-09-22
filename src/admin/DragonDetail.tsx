@@ -13,16 +13,17 @@ import type { Rarity } from "../types";
 // (25%) is extrapolated from the +5%-per-tier pattern, not yet real.
 const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
-// ★7-10 give an extra bonus on top of the rarity rate — but this is ONLY
-// confirmed for legendary (it's what reconciles legendary's 20% base rate
-// with real ★7/★8 data: ★2-6 contribute 20% each, ★7/★8 contribute 25%
-// each). Applying that same +5% to rare/epic/mythic was an unverified
-// extrapolation, and it was wrong: at ★10 it pushed rare to +110% — MORE
-// than base doubled — with no real data behind it. Defaulting the other
-// three to 0 (no late bonus) until real rare/epic/mythic late-star data
-// says otherwise; rare at ★10 is then a flat 9 stars x 10% = +90%.
+// ★7-10 give an extra bonus on top of the rarity rate — confirmed for
+// legendary (it's what reconciles legendary's 20% base rate with real
+// ★7/★8 data: ★2-6 contribute 20% each, ★7/★8 contribute 25% each) and now
+// for rare too: Neill confirmed a rare at ★10 goes from base 69 to 138 —
+// exactly +100% (doubled), not the +90% a flat 10%/star gives. Solving for
+// the ★7-10 rate that adds up to exactly 100% (5 stars ★2-6 @ 10% = 50%,
+// so the 4 late stars need to average 12.5% each) gives a rare late-star
+// extra of +2.5%. Epic and mythic still default to 0 — Neill's checking
+// epic separately, and there's no mythic data at all.
 const LATE_STAR_THRESHOLD = 7;
-const DEFAULT_LATE_STAR_BONUS_PCT: Record<Rarity, number> = { rare: 0, epic: 0, legendary: 0.05, mythic: 0 };
+const DEFAULT_LATE_STAR_BONUS_PCT: Record<Rarity, number> = { rare: 0.025, epic: 0, legendary: 0.05, mythic: 0 };
 
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
@@ -190,10 +191,9 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
             <h3 className="mb-1 mt-3 text-xs font-semibold uppercase text-neutral-500">Extra stat % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}</h3>
             <RarityTable values={lateStarBonusPctByRarity} current={dragon.rarity} onChange={(r, v) => setLateStarBonusPctByRarity((p) => ({ ...p, [r]: v }))} />
             <p className="mt-2 text-xs text-neutral-500">
-              Stats don't move with Level or Habits. Only legendary's late-star bonus is confirmed (real ★7/★8
-              data); rare/epic/mythic default to 0 until there's real data for them — applying legendary's +5%
-              everywhere pushed rare past +100% by ★10 with nothing to back it up. Mythic's base rate (25%) is
-              also just extrapolated, not real.
+              Stats don't move with Level or Habits. Rare and legendary's late-star bonuses are both confirmed
+              now (rare: ★10 lands on exactly base × 2.000); epic's is being checked separately, mythic has no
+              data at all.
             </p>
           </div>
         </div>
