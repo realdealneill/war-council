@@ -13,12 +13,16 @@ import type { Rarity } from "../types";
 // (25%) is extrapolated from the +5%-per-tier pattern, not yet real.
 const DEFAULT_STAT_STAR_PCT: Record<Rarity, number> = { rare: 0.1, epic: 0.15, legendary: 0.2, mythic: 0.25 };
 
-// ★7-10 each give an extra bonus on top of the rarity rate — for stats this
-// is confirmed (it's what reconciles the legendary 20% base rate with real
-// ★7/★8 data: ★2-6 contribute 20% each, ★7/★8 contribute 25% each). Power
-// uses the same shape as a starting hypothesis, not yet confirmed.
+// ★7-10 give an extra bonus on top of the rarity rate — but this is ONLY
+// confirmed for legendary (it's what reconciles legendary's 20% base rate
+// with real ★7/★8 data: ★2-6 contribute 20% each, ★7/★8 contribute 25%
+// each). Applying that same +5% to rare/epic/mythic was an unverified
+// extrapolation, and it was wrong: at ★10 it pushed rare to +110% — MORE
+// than base doubled — with no real data behind it. Defaulting the other
+// three to 0 (no late bonus) until real rare/epic/mythic late-star data
+// says otherwise; rare at ★10 is then a flat 9 stars x 10% = +90%.
 const LATE_STAR_THRESHOLD = 7;
-const DEFAULT_LATE_STAR_BONUS_PCT = 0.05;
+const DEFAULT_LATE_STAR_BONUS_PCT: Record<Rarity, number> = { rare: 0, epic: 0, legendary: 0.05, mythic: 0 };
 
 const STAT_KEYS = ["baseStrength", "baseInstinct", "baseIntelligence", "baseInitiative"] as const;
 const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
@@ -87,7 +91,8 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
 
   // --- Stats: base × starMult(rarity, star) only — no Level, no Habits ---
   const [statStarPctByRarity, setStatStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_STAT_STAR_PCT);
-  const [lateStarBonusPct, setLateStarBonusPct] = useState(DEFAULT_LATE_STAR_BONUS_PCT);
+  const [lateStarBonusPctByRarity, setLateStarBonusPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_LATE_STAR_BONUS_PCT);
+  const lateStarBonusPct = lateStarBonusPctByRarity[dragon.rarity];
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
   const unlockedHabitLevels = habitLevels.filter((_, i) => unlockedHabits[i]);
@@ -182,12 +187,13 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
             <h2 className="mb-3 text-sm font-semibold text-neutral-200">Stat growth-rate guesses</h2>
             <h3 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Stat % per star (from ★2 on)</h3>
             <RarityTable values={statStarPctByRarity} current={dragon.rarity} onChange={(r, v) => setStatStarPctByRarity((p) => ({ ...p, [r]: v }))} />
-            <label className="mb-2 mt-3 flex items-center justify-between gap-2 text-sm">
-              Extra stat % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}
-              <input type="number" step={0.01} value={lateStarBonusPct} onChange={(e) => setLateStarBonusPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
-            </label>
+            <h3 className="mb-1 mt-3 text-xs font-semibold uppercase text-neutral-500">Extra stat % for ★{LATE_STAR_THRESHOLD}–{MAX_STAR}</h3>
+            <RarityTable values={lateStarBonusPctByRarity} current={dragon.rarity} onChange={(r, v) => setLateStarBonusPctByRarity((p) => ({ ...p, [r]: v }))} />
             <p className="mt-2 text-xs text-neutral-500">
-              Stats don't move with Level or Habits. Mythic (25%) is extrapolated from the +5%-per-tier pattern — not yet real.
+              Stats don't move with Level or Habits. Only legendary's late-star bonus is confirmed (real ★7/★8
+              data); rare/epic/mythic default to 0 until there's real data for them — applying legendary's +5%
+              everywhere pushed rare past +100% by ★10 with nothing to back it up. Mythic's base rate (25%) is
+              also just extrapolated, not real.
             </p>
           </div>
         </div>
