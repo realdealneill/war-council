@@ -34,7 +34,11 @@ the original reference data with `npx convex run dragons:seed`.
   reference site's own data files (see below) via `scripts/` — don't hand-edit
   `src/data/generated/*.json`
 - [`src/engine/`](src/engine) — the scoring/optimization algorithm:
-  - `power.ts` — power estimation, goal-adjusted power
+  - `power.ts` — power estimation (rarity/star/level, still the old guessed
+    formula — see below), goal-adjusted power
+  - `powerFromStars.ts` — **confirmed** real power-from-Star-Rank values by
+    rarity (see "Confirmed game constants" below) — not yet wired into
+    `power.ts`/live scoring, only into the admin sandbox
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
   - `scoring.ts` — `evaluatePlacement()` / `bestArmy()`, the synergy model
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
@@ -42,10 +46,37 @@ the original reference data with `npx convex run dragons:seed`.
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
 - [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
-- [`src/admin/DragonStatsAdmin.tsx`](src/admin/DragonStatsAdmin.tsx) — dense
-  base-stat entry form at the hidden `/admin/dragon-stats` route (not linked
-  from the app; see `src/main.tsx`)
+- [`src/admin/`](src/admin) — hidden-ish admin pages, linked from a small nav
+  bar (`src/components/AdminNav.tsx`) rather than the main app UI:
+  - `DragonStatsAdmin.tsx` (`/admin/dragon-stats`) — dense base-stat entry form
+  - `DragonDetail.tsx` — per-dragon Power/Stats growth calculator, reached by
+    clicking a dragon on the stats page; a pure sandbox, doesn't affect live scoring
+  - `SynergyRules.tsx` (`/admin/synergy-rules`) — read-only view of every
+    scoring weight and per-dragon kit effect the real engine uses
 - [`src/components/`](src/components) — UI
+
+## Confirmed game constants
+
+Some formulas here are **confirmed against Neill's real game client**, not
+guesses — these should be trusted over anything else in this codebase that
+looks similar but is marked as a guess:
+
+- **Power from Star Rank** ([`src/engine/powerFromStars.ts`](src/engine/powerFromStars.ts)) —
+  real, independent of Level and Habits, fit per-rarity with a cubic in star
+  rank (checked for a ★9/★10 "late star" jump the way Stats had one; found
+  none). Rare/Epic have almost all 10 stars confirmed directly; Legendary's
+  ★9-10 are the cubic's own extrapolation, not yet confirmed; Mythic has no
+  data (no mythic dragons exist in the game yet). See the file for exactly
+  which cells are real vs. estimated.
+- **Stat growth per Star Rank** (`src/admin/DragonDetail.tsx`) — +10%/+15%/+20%
+  of base per star for rare/epic/legendary, starting at ★2, with an extra
+  +5% for ★7-10. Doesn't move with Level or Habits at all. Mythic's rate is
+  extrapolated, not confirmed.
+
+Power's contribution from Level and Habits, and Stats' mythic rate, are
+still guesses — see the tunable inputs on `DragonDetail.tsx` for those.
+None of this (confirmed or guessed) is wired into `src/engine/power.ts` or
+real army scoring yet; that's still the original guessed formula.
 
 ## `reference/`
 
