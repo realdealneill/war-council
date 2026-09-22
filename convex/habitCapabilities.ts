@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { effectLink, habitCapabilityFields } from "./schema";
+import { allyTarget, effectLink, habitCapabilityFields } from "./schema";
 
 const habitCapabilityDoc = v.object({ ...habitCapabilityFields, _id: v.id("habitCapabilities"), _creationTime: v.number() });
 
@@ -44,6 +44,16 @@ export const upsert = mutation({
     selfIntelligenceIncreasePct: pctByLevel,
     selfInstinctIncreasePct: pctByLevel,
     selfDamageReductionPct: pctByLevel,
+    // Ally modifiers
+    allyTarget: v.optional(allyTarget),
+    allyTacticalIncreasePct: pctByLevel,
+    allyPhysicalIncreasePct: pctByLevel,
+    allyFireIncreasePct: pctByLevel,
+    allyStrengthIncreasePct: pctByLevel,
+    allyInitiativeIncreasePct: pctByLevel,
+    allyIntelligenceIncreasePct: pctByLevel,
+    allyInstinctIncreasePct: pctByLevel,
+    allyDamageReductionPct: pctByLevel,
     effectLinks: v.optional(v.record(v.string(), effectLink)),
   },
   returns: v.null(),

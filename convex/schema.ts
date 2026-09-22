@@ -53,6 +53,17 @@ export const effectLink = v.object({
   buffedByEffect: v.optional(v.string()),
 });
 
+// Who an Ally modifiers habit targets — either a headcount (1-3 allies, the
+// game seems to pick which ones by its own priority rules) or one specific
+// lane. Neill wants these treated differently in the synergy engine later
+// (a headcount is "some ally, unspecified", a lane is a guaranteed hit on
+// whoever's placed there), so this is a discriminated union rather than one
+// flat enum.
+export const allyTarget = v.union(
+  v.object({ kind: v.literal("count"), count: v.union(v.literal(1), v.literal(2), v.literal(3)) }),
+  v.object({ kind: v.literal("lane"), lane: v.union(v.literal("left"), v.literal("right"), v.literal("vanguard")) })
+);
+
 // Structured, hand-entered capability data for one dragon's one habit slot
 // (1-5) — filled in via /admin/habit-builder while reading the habit's real
 // wording (src/data/generated/habits.json). Meant to grow: new percentage
@@ -84,6 +95,17 @@ export const habitCapabilityFields = {
   selfIntelligenceIncreasePct: v.optional(pctByLevel),
   selfInstinctIncreasePct: v.optional(pctByLevel),
   selfDamageReductionPct: v.optional(pctByLevel),
+  // Ally modifiers: same shape as Self modifiers, but applied to teammate(s)
+  // instead of this dragon. See `allyTarget` above for who it hits.
+  allyTarget: v.optional(allyTarget),
+  allyTacticalIncreasePct: v.optional(pctByLevel),
+  allyPhysicalIncreasePct: v.optional(pctByLevel),
+  allyFireIncreasePct: v.optional(pctByLevel),
+  allyStrengthIncreasePct: v.optional(pctByLevel),
+  allyInitiativeIncreasePct: v.optional(pctByLevel),
+  allyIntelligenceIncreasePct: v.optional(pctByLevel),
+  allyInstinctIncreasePct: v.optional(pctByLevel),
+  allyDamageReductionPct: v.optional(pctByLevel),
   // Per-row Requires Effect / Buffed by Effect, see `effectLink` above.
   effectLinks: v.optional(v.record(v.string(), effectLink)),
 };

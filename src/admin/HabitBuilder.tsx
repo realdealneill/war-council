@@ -22,9 +22,28 @@ type PctFieldKey =
   | "selfInitiativeIncreasePct"
   | "selfIntelligenceIncreasePct"
   | "selfInstinctIncreasePct"
-  | "selfDamageReductionPct";
+  | "selfDamageReductionPct"
+  | "allyTacticalIncreasePct"
+  | "allyPhysicalIncreasePct"
+  | "allyFireIncreasePct"
+  | "allyStrengthIncreasePct"
+  | "allyInitiativeIncreasePct"
+  | "allyIntelligenceIncreasePct"
+  | "allyInstinctIncreasePct"
+  | "allyDamageReductionPct";
 
 const TARGET_COUNTS = [1, 2, 3] as const;
+
+// See convex/schema.ts's `allyTarget` — a headcount (game picks which
+// ally/allies) is kept distinct from a specific lane (a guaranteed hit on
+// whoever's placed there) since the synergy engine will need to treat them
+// differently later.
+type AllyTarget = { kind: "count"; count: 1 | 2 | 3 } | { kind: "lane"; lane: "left" | "right" | "vanguard" };
+const ALLY_LANES: { key: "left" | "right" | "vanguard"; label: string }[] = [
+  { key: "left", label: "Left Flank" },
+  { key: "right", label: "Right Flank" },
+  { key: "vanguard", label: "Vanguard" },
+];
 
 const ENEMY_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "fireDmgReceivedPct", label: "Enemy Fire Damage Received" },
@@ -47,7 +66,18 @@ const SELF_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "selfDamageReductionPct", label: "Self Damage Reduction" },
 ];
 
-const ALL_PCT_ROWS = [...ENEMY_PCT_ROWS, ...SELF_PCT_ROWS];
+const ALLY_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
+  { key: "allyTacticalIncreasePct", label: "Ally Tactical Increase" },
+  { key: "allyPhysicalIncreasePct", label: "Ally Physical Increase" },
+  { key: "allyFireIncreasePct", label: "Ally Fire Increase" },
+  { key: "allyStrengthIncreasePct", label: "Ally Strength Increase" },
+  { key: "allyInitiativeIncreasePct", label: "Ally Initiative Increase" },
+  { key: "allyIntelligenceIncreasePct", label: "Ally Intelligence Increase" },
+  { key: "allyInstinctIncreasePct", label: "Ally Instinct Increase" },
+  { key: "allyDamageReductionPct", label: "Ally Damage Reduction" },
+];
+
+const ALL_PCT_ROWS = [...ENEMY_PCT_ROWS, ...SELF_PCT_ROWS, ...ALLY_PCT_ROWS];
 
 const EMPTY_ROW: (number | null)[] = [null, null, null, null, null];
 
@@ -68,6 +98,7 @@ type EffectLink = { requiresEffect?: string; buffedByEffect?: string };
 const TABS = [
   { key: "enemy", label: "Enemy effects" },
   { key: "self", label: "Self modifiers" },
+  { key: "ally", label: "Ally modifiers" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -143,6 +174,7 @@ function HabitSlotPicker({
             !!cap &&
             ((cap.activeRounds?.length ?? 0) > 0 ||
               cap.enemyTargetCount != null ||
+              cap.allyTarget != null ||
               (cap.effectLinks != null && Object.keys(cap.effectLinks).length > 0) ||
               ALL_PCT_ROWS.some(({ key }) => cap[key]?.some((v) => v != null)));
           return (
@@ -216,6 +248,41 @@ function TargetCountPicker({ value, onChange }: { value: 1 | 2 | 3 | undefined; 
             onClick={() => onChange(n)}
           >
             {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function targetButtonClass(active: boolean) {
+  return `rounded border px-2 py-0.5 text-sm ${
+    active ? "border-violet-500 bg-violet-950/40 text-violet-200" : "border-neutral-700 text-neutral-400 hover:bg-neutral-900"
+  }`;
+}
+
+function AllyTargetPicker({ value, onChange }: { value: AllyTarget | undefined; onChange: (target: AllyTarget) => void }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h3 className="text-xs font-semibold uppercase text-neutral-500">Targets</h3>
+      <div className="flex flex-wrap items-center gap-1">
+        {TARGET_COUNTS.map((n) => (
+          <button
+            key={`count-${n}`}
+            className={targetButtonClass(value?.kind === "count" && value.count === n)}
+            onClick={() => onChange({ kind: "count", count: n })}
+          >
+            {n} {n === 1 ? "Ally" : "Allies"}
+          </button>
+        ))}
+        <span className="mx-1 text-neutral-700">|</span>
+        {ALLY_LANES.map((lane) => (
+          <button
+            key={lane.key}
+            className={targetButtonClass(value?.kind === "lane" && value.lane === lane.key)}
+            onClick={() => onChange({ kind: "lane", lane: lane.key })}
+          >
+            {lane.label}
           </button>
         ))}
       </div>
@@ -341,7 +408,7 @@ function HabitSlotEditor({
     setActiveTab("enemy");
   }, [dragon._id, habitSlot]);
 
-  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | "effectLinks" | PctFieldKey>>) {
+  function save(patch: Partial<Pick<Capability, "activeRounds" | "enemyTargetCount" | "allyTarget" | "effectLinks" | PctFieldKey>>) {
     void upsert({ dragonId: dragon._id, habitSlot, ...patch });
   }
 
@@ -427,6 +494,22 @@ function HabitSlotEditor({
           {activeTab === "self" && (
             <>
               {SELF_PCT_ROWS.map(({ key, label }) => (
+                <PctRow
+                  key={key}
+                  label={label}
+                  values={capability?.[key] ?? EMPTY_ROW}
+                  effectLink={capability?.effectLinks?.[key]}
+                  onCommit={(values) => save({ [key]: values } as never)}
+                  onClear={() => save({ [key]: EMPTY_ROW } as never)}
+                  onEffectLinkChange={(patch) => saveEffectLink(key, patch)}
+                />
+              ))}
+            </>
+          )}
+          {activeTab === "ally" && (
+            <>
+              <AllyTargetPicker value={capability?.allyTarget} onChange={(target) => save({ allyTarget: target })} />
+              {ALLY_PCT_ROWS.map(({ key, label }) => (
                 <PctRow
                   key={key}
                   label={label}
