@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { MODEL } from "../data";
 import { powerFromHabits } from "../engine/powerFromHabits";
 import { isPowerFromLevelConfirmed, powerFromLevel } from "../engine/powerFromLevel";
@@ -31,6 +33,14 @@ const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
   baseInstinct: "Instinct",
   baseIntelligence: "Intelligence",
   baseInitiative: "Initiative",
+};
+// Which habitCapabilities self-modifier row feeds each stat's "from Habits"
+// column below.
+const SELF_PCT_FIELD: Record<(typeof STAT_KEYS)[number], "selfStrengthIncreasePct" | "selfInstinctIncreasePct" | "selfIntelligenceIncreasePct" | "selfInitiativeIncreasePct"> = {
+  baseStrength: "selfStrengthIncreasePct",
+  baseInstinct: "selfInstinctIncreasePct",
+  baseIntelligence: "selfIntelligenceIncreasePct",
+  baseInitiative: "selfInitiativeIncreasePct",
 };
 
 const MAX_STAR = 10;
@@ -97,6 +107,30 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
   const unlockedHabitLevels = habitLevels.filter((_, i) => unlockedHabits[i]);
+
+  // Additional flat stat increase from unlocked Habits' self-modifier rows
+  // (see convex/habitCapabilities.ts) — same "% of base, rounded up" model
+  // as the star-rank growth above, just summed across whichever unlocked
+  // habits actually have a value at their current level. Neill's own words:
+  // "I'm not sure if that's how it works in the game but let's stay
+  // consistent." Only populated when at least one unlocked habit actually
+  // has a self-modifier for that stat at its current level.
+  const habitCapabilities = useQuery(api.habitCapabilities.listForDragon, { dragonId: dragon._id });
+  function habitStatBonus(key: (typeof STAT_KEYS)[number]): { pct: number; hasData: boolean } {
+    const field = SELF_PCT_FIELD[key];
+    let pct = 0;
+    let hasData = false;
+    MODEL.HABIT_UNLOCK_STARS.forEach((_req, i) => {
+      if (!unlockedHabits[i]) return;
+      const cap = habitCapabilities?.find((c) => c.habitSlot === i + 1);
+      const v = cap?.[field]?.[habitLevels[i] - 1];
+      if (v != null) {
+        pct += v;
+        hasData = true;
+      }
+    });
+    return { pct, hasData };
+  }
 
   // Power = powerFromStars + powerFromHabits + powerFromLevel
   const starPower = powerFromStars(dragon.rarity, starRank);
@@ -244,36 +278,50 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
                 <tr className="text-left text-neutral-500">
                   <th className="py-1">Stat</th>
                   <th className="py-1 text-right">Base</th>
-                  <th className="py-1 text-right">Projected</th>
+                  <th className="py-1 text-right">From Stars</th>
+                  <th className="py-1 text-right">From Habits</th>
+                  <th className="py-1 text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {STAT_KEYS.map((key) => {
                   const base = dragon[key];
                   const projected = base != null ? Math.round(base * statMult) : null;
-                  const delta = projected != null ? projected - base! : null;
+                  const starIncrease = projected != null ? projected - base! : null;
+                  const { pct: habitPct, hasData: hasHabitData } = habitStatBonus(key);
+                  const habitBonus = hasHabitData && base != null ? Math.ceil((base * habitPct) / 100) : null;
+                  const total = base != null ? base + (starIncrease ?? 0) + (habitBonus ?? 0) : null;
                   return (
                     <tr key={key} className="border-t border-neutral-900">
                       <td className="py-1">{STAT_LABELS[key]}</td>
                       <td className="py-1 text-right text-neutral-400">{base ?? "—"}</td>
-                      <td className="py-1 text-right font-semibold">
-                        {projected != null ? (
-                          <>
-                            {projected.toLocaleString()}
-                            {delta! > 0 && <span className="ml-1 font-normal text-emerald-400">(+{delta!.toLocaleString()})</span>}
-                          </>
+                      <td className="py-1 text-right">
+                        {starIncrease != null && starIncrease > 0 ? (
+                          <span className="font-semibold text-emerald-400">+{starIncrease.toLocaleString()}</span>
                         ) : (
-                          "—"
+                          <span className="text-neutral-600">—</span>
                         )}
                       </td>
+                      <td className="py-1 text-right">
+                        {habitBonus != null ? (
+                          <span className="font-semibold text-emerald-400">+{habitBonus.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-neutral-600">—</span>
+                        )}
+                      </td>
+                      <td className="py-1 text-right font-semibold">{total != null ? total.toLocaleString() : "—"}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
             <p className="mt-2 text-xs text-neutral-500">
-              "Base" is whatever you entered on the list page for this dragon at ★1 — every star from ★2 on
-              adds one more rarity-rate step. Blank stats show as "—".
+              "Base" is whatever you entered on the list page for this dragon at ★1. "From Stars" is that
+              same rarity-rate step applied for every star from ★2 on (the formula above). "From Habits" sums
+              the currently-unlocked-and-leveled Habits' self-modifier % for that stat (see the Habits
+              controls to the left), takes that % of Base, rounds up, and adds it — only shown when at least
+              one unlocked Habit actually has a value there. "Total" is Base + From Stars + From Habits.
+              Blank cells show as "—".
             </p>
           </div>
         </div>
