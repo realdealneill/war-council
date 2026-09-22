@@ -51,7 +51,8 @@ the original reference data with `npx convex run dragons:seed`.
   dragons it targets (1-3), enemy-facing % by level (Fire/Tactical/Physical
   Damage Received, Strength/Initiative/Intelligence/Instinct Reduced), and
   self modifier % by level (Tactical/Physical/Fire Increase, Strength/
-  Initiative/Intelligence/Instinct Increase); any percentage row can also
+  Initiative/Intelligence/Instinct Increase, Damage Reduction — entered as a
+  positive %, meant to feed a later survivability figure); any percentage row can also
   carry a Requires Effect (row only applies while the target/self holds that
   effect) and a Buffed by Effect (doubles the row's values while active — the
   game mostly just doubles rather than using a distinct number), stored in

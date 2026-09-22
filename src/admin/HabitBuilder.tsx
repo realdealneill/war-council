@@ -21,7 +21,8 @@ type PctFieldKey =
   | "selfStrengthIncreasePct"
   | "selfInitiativeIncreasePct"
   | "selfIntelligenceIncreasePct"
-  | "selfInstinctIncreasePct";
+  | "selfInstinctIncreasePct"
+  | "selfDamageReductionPct";
 
 const TARGET_COUNTS = [1, 2, 3] as const;
 
@@ -43,6 +44,7 @@ const SELF_PCT_ROWS: { key: PctFieldKey; label: string }[] = [
   { key: "selfInitiativeIncreasePct", label: "Self Initiative Increase" },
   { key: "selfIntelligenceIncreasePct", label: "Self Intelligence Increase" },
   { key: "selfInstinctIncreasePct", label: "Self Instinct Increase" },
+  { key: "selfDamageReductionPct", label: "Self Damage Reduction" },
 ];
 
 const ALL_PCT_ROWS = [...ENEMY_PCT_ROWS, ...SELF_PCT_ROWS];

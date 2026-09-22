@@ -43,6 +43,7 @@ export const upsert = mutation({
     selfInitiativeIncreasePct: pctByLevel,
     selfIntelligenceIncreasePct: pctByLevel,
     selfInstinctIncreasePct: pctByLevel,
+    selfDamageReductionPct: pctByLevel,
     effectLinks: v.optional(v.record(v.string(), effectLink)),
   },
   returns: v.null(),

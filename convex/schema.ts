@@ -83,6 +83,7 @@ export const habitCapabilityFields = {
   selfInitiativeIncreasePct: v.optional(pctByLevel),
   selfIntelligenceIncreasePct: v.optional(pctByLevel),
   selfInstinctIncreasePct: v.optional(pctByLevel),
+  selfDamageReductionPct: v.optional(pctByLevel),
   // Per-row Requires Effect / Buffed by Effect, see `effectLink` above.
   effectLinks: v.optional(v.record(v.string(), effectLink)),
 };
