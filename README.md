@@ -36,9 +36,10 @@ the original reference data with `npx convex run dragons:seed`.
 - [`src/engine/`](src/engine) — the scoring/optimization algorithm:
   - `power.ts` — power estimation (rarity/star/level, still the old guessed
     formula — see below), goal-adjusted power
-  - `powerFromStars.ts` — **confirmed** real power-from-Star-Rank values by
-    rarity (see "Confirmed game constants" below) — not yet wired into
-    `power.ts`/live scoring, only into the admin sandbox
+  - `powerFromStars.ts` / `powerFromHabits.ts` — **confirmed** real power
+    values by rarity, from Star Rank and from Habits (see "Confirmed game
+    constants" below) — not yet wired into `power.ts`/live scoring, only
+    into the admin sandbox
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
   - `scoring.ts` — `evaluatePlacement()` / `bestArmy()`, the synergy model
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
@@ -68,13 +69,18 @@ looks similar but is marked as a guess:
   ★9-10 are the cubic's own extrapolation, not yet confirmed; Mythic has no
   data (no mythic dragons exist in the game yet). See the file for exactly
   which cells are real vs. estimated.
+- **Power from Habits** ([`src/engine/powerFromHabits.ts`](src/engine/powerFromHabits.ts)) —
+  real, flat power per habit level (1-5) by rarity; sum the table's value
+  for each currently-unlocked habit at its own level (a legendary with 3
+  habits unlocked, all level 3, gets 1500 × 3 = 4500). No mythic data.
 - **Stat growth per Star Rank** (`src/admin/DragonDetail.tsx`) — +10%/+15%/+20%
   of base per star for rare/epic/legendary, starting at ★2, with an extra
   +5% for ★7-10. Doesn't move with Level or Habits at all. Mythic's rate is
   extrapolated, not confirmed.
 
-Power's contribution from Level and Habits, and Stats' mythic rate, are
-still guesses — see the tunable inputs on `DragonDetail.tsx` for those.
+Power's contribution from Level, and Stats' mythic rate, are still guesses
+— see the tunable inputs on `DragonDetail.tsx` for those. Once Level is
+confirmed too, Total Power will just be the sum of all three.
 None of this (confirmed or guessed) is wired into `src/engine/power.ts` or
 real army scoring yet; that's still the original guessed formula.
 

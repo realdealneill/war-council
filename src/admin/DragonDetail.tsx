@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MODEL } from "../data";
+import { powerFromHabits } from "../engine/powerFromHabits";
 import { isPowerFromStarsConfirmed, powerFromStars } from "../engine/powerFromStars";
 import type { Doc } from "../../convex/_generated/dataModel";
 import type { Rarity } from "../types";
@@ -72,33 +73,34 @@ function RarityTable({
  * A pure client-side "what if" sandbox — nothing here writes to Convex, and
  * nothing here changes the live app's real army scoring.
  *
- * Power from Star Rank is now LOCKED IN (src/engine/powerFromStars.ts) —
- * confirmed against Neill's real game client, not a guess. Level and Habits'
- * contribution to Power are still guesses, kept separate and tunable below.
- * Stats are their own still-fully-guessed calculation.
+ * Power from Star Rank AND from Habits are now LOCKED IN
+ * (src/engine/powerFromStars.ts, src/engine/powerFromHabits.ts) — confirmed
+ * against Neill's real game client, not guesses. Only Level's contribution
+ * to Power is still a guess, tunable below. Stats are their own
+ * still-fully-guessed calculation.
  */
 export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBack: () => void }) {
   const [starRank, setStarRank] = useState(3);
   const [level, setLevel] = useState(15);
   const [habitLevels, setHabitLevels] = useState<number[]>([1, 1, 1, 1, 1]);
 
-  // --- Power: powerFromStars(rarity, star) [locked in] + levelBonus [guess] + habitBonus [guess] ---
+  // --- Power: powerFromStars + powerFromHabits [both locked in] + levelBonus [guess] ---
   const [powerLevelPct, setPowerLevelPct] = useState(0.02);
-  const [powerHabitPct, setPowerHabitPct] = useState(0.01);
 
   // --- Stats: base × starMult(rarity, star) only — no Level, no Habits ---
   const [statStarPctByRarity, setStatStarPctByRarity] = useState<Record<Rarity, number>>(DEFAULT_STAT_STAR_PCT);
   const [lateStarBonusPct, setLateStarBonusPct] = useState(DEFAULT_LATE_STAR_BONUS_PCT);
 
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
-  const totalHabitLevels = habitLevels.reduce((sum, lvl, i) => sum + (unlockedHabits[i] ? lvl : 0), 0);
+  const unlockedHabitLevels = habitLevels.filter((_, i) => unlockedHabits[i]);
 
   // Power
   const starPower = powerFromStars(dragon.rarity, starRank);
   const starPowerConfirmed = isPowerFromStarsConfirmed(dragon.rarity, starRank);
-  const levelBonus = starPower != null ? powerLevelPct * starPower * Math.max(0, level - 1) : 0;
-  const habitBonus = starPower != null ? powerHabitPct * starPower * totalHabitLevels : 0;
-  const totalPower = starPower != null ? Math.round(starPower + levelBonus + habitBonus) : null;
+  const habitPower = powerFromHabits(dragon.rarity, unlockedHabitLevels);
+  const knownPower = starPower != null && habitPower != null ? starPower + habitPower : null;
+  const levelBonus = knownPower != null ? powerLevelPct * knownPower * Math.max(0, level - 1) : 0;
+  const totalPower = knownPower != null ? Math.round(knownPower + levelBonus) : null;
 
   // Stats
   const statStar = tieredStarBonus(starRank, statStarPctByRarity[dragon.rarity], lateStarBonusPct);
@@ -170,16 +172,12 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
             <h2 className="mb-1 text-sm font-semibold text-neutral-200">Power growth-rate guesses</h2>
             <p className="mb-2 text-xs text-neutral-500">
-              Power from Star Rank is locked in now (confirmed, not editable here — see the Total Power card).
-              Only Level's and Habits' contribution are still guesses.
+              Power from Star Rank and from Habits are both locked in now (confirmed, not editable here — see the
+              Total Power card). Only Level's contribution is still a guess.
             </p>
-            <label className="mb-2 flex items-center justify-between gap-2 text-sm">
+            <label className="flex items-center justify-between gap-2 text-sm">
               Power % per level (guess)
               <input type="number" step={0.005} value={powerLevelPct} onChange={(e) => setPowerLevelPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
-            </label>
-            <label className="flex items-center justify-between gap-2 text-sm">
-              Power % per habit level (guess)
-              <input type="number" step={0.005} value={powerHabitPct} onChange={(e) => setPowerHabitPct(Number(e.target.value) || 0)} className="w-20 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-right" />
             </label>
           </div>
 
@@ -201,22 +199,26 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-violet-800 bg-violet-950/20 p-4">
             <h2 className="mb-2 text-sm font-semibold text-violet-200">Total Power</h2>
-            {starPower == null ? (
-              <p className="text-sm text-neutral-500">No confirmed Power-from-Stars data yet for {dragon.rarity} dragons.</p>
+            {knownPower == null ? (
+              <p className="text-sm text-neutral-500">No confirmed Power data yet for {dragon.rarity} dragons.</p>
             ) : (
               <>
                 <div className="font-mono text-xs text-neutral-400">
-                  {starPower.toLocaleString()} power from ★{starRank} {dragon.rarity}
+                  {starPower!.toLocaleString()} power from ★{starRank} {dragon.rarity}
                   {" "}
                   <span className={starPowerConfirmed ? "text-emerald-400" : "text-amber-400"}>
                     ({starPowerConfirmed ? "confirmed" : "estimated"})
                   </span>
                 </div>
                 <div className="font-mono text-xs text-neutral-400">
-                  + {Math.round(levelBonus).toLocaleString()} level bonus ({powerLevelPct}×{starPower.toLocaleString()}×{Math.max(0, level - 1)} — guess)
+                  + {habitPower!.toLocaleString()} power from {unlockedHabitLevels.length} unlocked habit(s)
+                  {unlockedHabitLevels.length > 0 && (
+                    <> ({unlockedHabitLevels.map((lvl) => `Lv${lvl}`).join(" + ")}) </>
+                  )}
+                  <span className="text-emerald-400">(confirmed)</span>
                 </div>
                 <div className="font-mono text-xs text-neutral-400">
-                  + {Math.round(habitBonus).toLocaleString()} habit bonus ({powerHabitPct}×{starPower.toLocaleString()}×{totalHabitLevels} — guess)
+                  + {Math.round(levelBonus).toLocaleString()} level bonus ({powerLevelPct}×{knownPower.toLocaleString()}×{Math.max(0, level - 1)} — guess)
                 </div>
                 <div className="mt-2 text-2xl font-bold text-neutral-100">{totalPower!.toLocaleString()}</div>
               </>
