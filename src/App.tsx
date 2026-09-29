@@ -8,6 +8,7 @@
 // and re-join against the live catalog, not frozen Dragon copies.
 import * as React from "react";
 import { evaluateFormation, recommendFlankPairs, withEmphasis, type FormationContext } from "./engine/formation";
+import { rateSheetFormation, searchDisjointSheetFormations, type SheetLineupSearch } from "./engine/sheetRating";
 import { allHabitsAt, loadoutFromStars, type SkillsByDragon } from "./engine/habitSynergy";
 import { confirmedPower } from "./engine/power";
 import { flankDamageType, rankFlankCandidates } from "./engine/vanguardFit";
@@ -16,6 +17,8 @@ import { useHabitSkills } from "./hooks/useHabitSkills";
 import type { Dragon as EngineDragon } from "./types";
 import { skillSummaries, toUiCandidate, toUiDragon, toUiEval, toUiPair, vanguardSkillOf } from "./ui/adapt";
 import { HabitLinkTable, RoundTimeline, ScoreMath, StructuralBreakdown, WarningList } from "./ui/Breakdown";
+import { SheetDevCard } from "./ui/SheetDevCard";
+import { SheetLineup } from "./ui/SheetLineup";
 import { Button, Eyebrow, Panel, Skeleton } from "./ui/Chips";
 import { ControlsBar, EmphasisSlider } from "./ui/ControlsBar";
 import { FormationBoard, LinkLegend } from "./ui/FormationBoard";
@@ -107,6 +110,10 @@ function App() {
   const [lane, setLane] = React.useState<"left" | "right">("left");
   const [skillFor, setSkillFor] = React.useState<Dragon | null>(null);
   const [controlsOpen, setControlsOpen] = React.useState(false);
+  const [lineup, setLineup] = React.useState<SheetLineupSearch | null>(null);
+  const [lineupMs, setLineupMs] = React.useState<number | null>(null);
+  const [lineupRunning, setLineupRunning] = React.useState(false);
+  const [lineupKeyUsed, setLineupKeyUsed] = React.useState<string | null>(null);
 
   // One habit loadout for both power and synergy, so they always agree.
   const loadout = React.useMemo(
@@ -126,6 +133,26 @@ function App() {
   const uiDragons = React.useMemo(() => dragons.map(toUiDragon), [dragons]);
   const inRoster = React.useMemo(() => new Set(dragons.filter((d) => !removed.has(d.id)).map((d) => d.id)), [dragons, removed]);
   const pool = React.useMemo(() => dragons.filter((d) => inRoster.has(d.id) && d.active !== false), [dragons, inRoster]);
+  // The landing search is manual. This key only marks an old result stale.
+  const lineupKey = React.useMemo(
+    () => pool.map((d) => `${d.id}:${d.starRank}:${d.reignLevel}:${d.power}`).join("|") + `\n${controls.habitAssumption}:${controls.habitLevel}`,
+    [pool, controls.habitAssumption, controls.habitLevel],
+  );
+  const calculateLineup = () => {
+    if (!skills || pool.length < 3 || lineupRunning) return;
+    const key = lineupKey;
+    const roster = pool;
+    const habitSkills = skills;
+    setLineupRunning(true);
+    window.setTimeout(() => {
+      const t0 = performance.now();
+      const found = searchDisjointSheetFormations(roster, (d) => d.role === "tank" || d.breed === "champion", { skills: habitSkills, loadout });
+      setLineup(found);
+      setLineupMs(Math.round(performance.now() - t0));
+      setLineupKeyUsed(key);
+      setLineupRunning(false);
+    }, 0);
+  };
   const byId = (id: string | null) => (id ? (pool.find((d) => d.id === id) ?? null) : null);
   const vanguard = byId(vgId);
   const left = byId(leftId);
@@ -222,6 +249,19 @@ function App() {
     }
   }
   const boardPlacement: Placement = focus?.placement ?? { left: left && toUiDragon(left), vanguard: uiVanguard, right: right && toUiDragon(right) };
+  const sheetRating = React.useMemo(() => {
+    if (!focus) return null;
+    const find = (id: string | undefined) => (id ? dragons.find((d) => d.id === id) ?? null : null);
+    return rateSheetFormation(
+      {
+        left: find(focus.placement.left?.id),
+        vanguard: find(focus.placement.vanguard?.id),
+        right: find(focus.placement.right?.id),
+      },
+      { skills: skills ?? NO_SKILLS, loadout },
+      dragons,
+    );
+  }, [focus, dragons, skills, loadout]);
   const focusIsPlaced = focusLabel === "Placed";
   const dragonsByName = React.useMemo(() => Object.fromEntries(uiDragons.map((d) => [d.name, d])), [uiDragons]);
 
@@ -363,15 +403,33 @@ function App() {
     );
   } else if (!vanguard || !uiVanguard || !vgSkill || picking) {
     body = (
-      <VanguardPicker
-        dragons={pool.map(toUiDragon)}
-        skillOf={(d) => vanguardSkillOf(d.name) ?? { selfText: "—", flankPos: "left", flankText: "—" }}
-        flankDamageOf={(d) => flankDamageType(d.name) as Dragon["damageType"] | null}
-        isRecommended={isRecommendedVanguard}
-        onPick={pickVanguard}
-        onCancel={vanguard ? () => setPicking(false) : undefined}
-        currentId={vanguard?.id}
-      />
+      <div className="flex flex-col gap-5">
+        <SheetLineup
+          search={lineup}
+          ms={lineupMs}
+          running={lineupRunning}
+          stale={lineup != null && lineupKeyUsed !== lineupKey}
+          canRun={Boolean(skills) && pool.length >= 3}
+          onCalculate={calculateLineup}
+          onUse={(index) => {
+            const hit = lineup?.hits[index];
+            if (!hit) return;
+            setVgId(hit.vanguard.id);
+            setLeftId(hit.left.id);
+            setRightId(hit.right.id);
+            setPicking(false);
+          }}
+        />
+        <VanguardPicker
+          dragons={pool.map(toUiDragon)}
+          skillOf={(d) => vanguardSkillOf(d.name) ?? { selfText: "—", flankPos: "left", flankText: "—" }}
+          flankDamageOf={(d) => flankDamageType(d.name) as Dragon["damageType"] | null}
+          isRecommended={isRecommendedVanguard}
+          onPick={pickVanguard}
+          onCancel={vanguard ? () => setPicking(false) : undefined}
+          currentId={vanguard?.id}
+        />
+      </div>
     );
   } else {
     const uiLeft = left && toUiDragon(left);
@@ -514,6 +572,11 @@ function App() {
               <Section phone={phone} defaultOpen={false} title="10-round timeline" aside={<span className="text-[11px] text-ink-faint">per-round uptime</span>}>
                 <RoundTimeline links={focus.habitLinks} highlight={highlight} onHighlight={setHighlight} />
               </Section>
+              {sheetRating && (
+                <Section phone={phone} defaultOpen title="Dev · Sheet stat rating" aside={<span className="text-[11px] text-ink-faint">does not affect the score</span>}>
+                  <SheetDevCard rating={sheetRating} />
+                </Section>
+              )}
             </>
           )}
         </div>

@@ -186,6 +186,28 @@ dragon's power (`confirmedPower()` in `src/engine/power.ts`), with Level
 from the roster drawer (default 15) and habits from the Assumed habits /
 Habit level controls — the same loadout habit synergy uses.
 
+The formation page also has a **Dev · Sheet stat rating** card
+(`src/engine/sheetRating.ts`). It is a preview and does not feed the score.
+It builds each dragon's Strength / Instinct / Intelligence / Initiative from
+the ★1 base times the star-rank growth above, then applies combat buffs to
+those numbers. Strength is Physical offense only, Instinct is Tactical
+offense plus Physical defense, Intelligence is Fire offense plus Tactical
+defense, and Initiative is Fire defense plus turn order. A formation fields
+one troop (Cavalry, Shieldbearers, Archers, or Spearmen). A dragon with +
+affinity for that troop gets +20% on all four stats before buffs; a − or
+neutral affinity does not change them. The card tries all four troops and
+keeps the one with the highest formation score. The live score above still
+uses its own +7% of power per matching dragon. The card's index divides the
+formation by a theoretical ceiling (highest ★1 base in the roster, grown as
+a legendary at ★10, then ×1.2 for troop affinity, in the same seats). Its
+T-score compares the seated dragons with the rest of the roster; the roster
+side has no troop. The Vanguard picker does not run that search on its own.
+A button on the landing page scores every flank pair around each recommended
+Vanguard (tank or champion), under all four troops, and lists three disjoint
+formations: the best, then the best that shares no dragon with it, then the
+best that shares no dragon with either. Change the roster first, then
+calculate.
+
 ## `reference/`
 
 [`reference/dragonfire-formations-site/`](reference/dragonfire-formations-site)
