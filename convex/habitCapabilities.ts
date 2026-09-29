@@ -1,9 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { allyTarget, effectLink, habitCapabilityFields, rngEffectEntry } from "./schema";
+import { clause, habitCapabilityFields } from "./schema";
 
 const habitCapabilityDoc = v.object({ ...habitCapabilityFields, _id: v.id("habitCapabilities"), _creationTime: v.number() });
 
+// A dragon's Command (habitSlot 0) and Habits (1-5).
 export const listForDragon = query({
   args: { dragonId: v.id("dragons") },
   returns: v.array(habitCapabilityDoc),
@@ -14,48 +15,13 @@ export const listForDragon = query({
       .collect(),
 });
 
-const pctByLevel = v.optional(v.array(v.union(v.number(), v.null())));
-
-// Insert-or-patch for one (dragon, habit slot) — the row doesn't have to
-// exist yet (a dragon's 5 habit slots aren't pre-seeded, only created the
-// first time something is saved for them). Every field but the two key
-// fields is optional so a caller can patch just one thing (e.g. one
-// percentage row) without having to resend everything else.
-export const upsert = mutation({
+// Replaces one skill's whole clause list (the builder edits the list client-side).
+export const save = mutation({
   args: {
     dragonId: v.id("dragons"),
     habitSlot: v.number(),
-    activeRounds: v.optional(v.array(v.number())),
-    // Enemy-facing
-    enemyTargetCount: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))),
-    fireDmgReceivedPct: pctByLevel,
-    tacticalDmgReceivedPct: pctByLevel,
-    physicalDmgReceivedPct: pctByLevel,
-    enemyStrengthReducedPct: pctByLevel,
-    enemyInitiativeReducedPct: pctByLevel,
-    enemyIntelligenceReducedPct: pctByLevel,
-    enemyInstinctReducedPct: pctByLevel,
-    // Self modifiers
-    selfTacticalIncreasePct: pctByLevel,
-    selfPhysicalIncreasePct: pctByLevel,
-    selfFireIncreasePct: pctByLevel,
-    selfStrengthIncreasePct: pctByLevel,
-    selfInitiativeIncreasePct: pctByLevel,
-    selfIntelligenceIncreasePct: pctByLevel,
-    selfInstinctIncreasePct: pctByLevel,
-    selfDamageReductionPct: pctByLevel,
-    // Ally modifiers
-    allyTarget: v.optional(allyTarget),
-    allyTacticalIncreasePct: pctByLevel,
-    allyPhysicalIncreasePct: pctByLevel,
-    allyFireIncreasePct: pctByLevel,
-    allyStrengthIncreasePct: pctByLevel,
-    allyInitiativeIncreasePct: pctByLevel,
-    allyIntelligenceIncreasePct: pctByLevel,
-    allyInstinctIncreasePct: pctByLevel,
-    allyDamageReductionPct: pctByLevel,
-    rngEffects: v.optional(v.array(rngEffectEntry)),
-    effectLinks: v.optional(v.record(v.string(), effectLink)),
+    isCommandHabit: v.optional(v.boolean()),
+    clauses: v.optional(v.array(clause)),
   },
   returns: v.null(),
   handler: async (ctx, { dragonId, habitSlot, ...patch }) => {
@@ -66,7 +32,12 @@ export const upsert = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, patch);
     } else {
-      await ctx.db.insert("habitCapabilities", { dragonId, habitSlot, activeRounds: [], ...patch });
+      await ctx.db.insert("habitCapabilities", {
+        dragonId,
+        habitSlot,
+        isCommandHabit: patch.isCommandHabit ?? false,
+        clauses: patch.clauses ?? [],
+      });
     }
     return null;
   },

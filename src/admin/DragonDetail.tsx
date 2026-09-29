@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { MODEL } from "../data";
+import { COMMAND_SLOT } from "../engine/habitClauses";
 import { powerFromHabits } from "../engine/powerFromHabits";
 import { isPowerFromLevelConfirmed, powerFromLevel } from "../engine/powerFromLevel";
 import { isPowerFromStarsConfirmed, powerFromStars } from "../engine/powerFromStars";
@@ -34,13 +35,12 @@ const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
   baseIntelligence: "Intelligence",
   baseInitiative: "Initiative",
 };
-// Which habitCapabilities self-modifier row feeds each stat's "from Habits"
-// column below.
-const SELF_PCT_FIELD: Record<(typeof STAT_KEYS)[number], "selfStrengthIncreasePct" | "selfInstinctIncreasePct" | "selfIntelligenceIncreasePct" | "selfInitiativeIncreasePct"> = {
-  baseStrength: "selfStrengthIncreasePct",
-  baseInstinct: "selfInstinctIncreasePct",
-  baseIntelligence: "selfIntelligenceIncreasePct",
-  baseInitiative: "selfInitiativeIncreasePct",
+// The clause stat name (see src/engine/habitClauses.ts) behind each column.
+const CLAUSE_STAT: Record<(typeof STAT_KEYS)[number], string> = {
+  baseStrength: "strength",
+  baseInstinct: "instinct",
+  baseIntelligence: "intelligence",
+  baseInitiative: "initiative",
 };
 
 const MAX_STAR = 10;
@@ -108,27 +108,33 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
   const unlockedHabits = MODEL.HABIT_UNLOCK_STARS.map((req) => starRank >= req);
   const unlockedHabitLevels = habitLevels.filter((_, i) => unlockedHabits[i]);
 
-  // Additional flat stat increase from unlocked Habits' self-modifier rows
-  // (see convex/habitCapabilities.ts) — same "% of base, rounded up" model
-  // as the star-rank growth above, just summed across whichever unlocked
-  // habits actually have a value at their current level. Neill's own words:
-  // "I'm not sure if that's how it works in the game but let's stay
-  // consistent." Only populated when at least one unlocked habit actually
-  // has a self-modifier for that stat at its current level.
-  const habitCapabilities = useQuery(api.habitCapabilities.listForDragon, { dragonId: dragon._id });
+  // Additional flat stat change from the Command and unlocked Habits (see
+  // src/engine/habitClauses.ts) — same "% of base, rounded up" model as the
+  // star-rank growth above ("I'm not sure if that's how it works in the game
+  // but let's stay consistent"). Counts only guaranteed, unconditional stat
+  // clauses that land on this dragon (self, or "3 Allies", which always
+  // includes it) at each habit's current level, at their peak — a buff
+  // that's only up rounds 4-7 still counts in full here.
+  const skills = useQuery(api.habitCapabilities.listForDragon, { dragonId: dragon._id });
   function habitStatBonus(key: (typeof STAT_KEYS)[number]): { pct: number; hasData: boolean } {
-    const field = SELF_PCT_FIELD[key];
+    const stat = CLAUSE_STAT[key];
     let pct = 0;
     let hasData = false;
-    MODEL.HABIT_UNLOCK_STARS.forEach((_req, i) => {
-      if (!unlockedHabits[i]) return;
-      const cap = habitCapabilities?.find((c) => c.habitSlot === i + 1);
-      const v = cap?.[field]?.[habitLevels[i] - 1];
-      if (v != null) {
-        pct += v;
-        hasData = true;
+    for (const skill of skills ?? []) {
+      const slot = skill.habitSlot;
+      if (slot !== COMMAND_SLOT && !unlockedHabits[slot - 1]) continue;
+      const levelIdx = slot === COMMAND_SLOT ? 0 : habitLevels[slot - 1] - 1;
+      for (const c of skill.clauses) {
+        if (c.kind !== "stat" || !c.what.includes(stat)) continue;
+        if (c.chanceByLevel || c.skip || c.stack || c.conditions.length) continue;
+        const hitsSelf = c.target?.side === "self" || (c.target?.side === "ally" && c.target.count === 3);
+        const v = hitsSelf ? c.valueByLevel?.[levelIdx] : null;
+        if (v != null) {
+          pct += v;
+          hasData = true;
+        }
       }
-    });
+    }
     return { pct, hasData };
   }
 
@@ -289,7 +295,7 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
                   const projected = base != null ? Math.round(base * statMult) : null;
                   const starIncrease = projected != null ? projected - base! : null;
                   const { pct: habitPct, hasData: hasHabitData } = habitStatBonus(key);
-                  const habitBonus = hasHabitData && base != null ? Math.ceil((base * habitPct) / 100) : null;
+                  const habitBonus = hasHabitData && base != null ? Math.sign(habitPct) * Math.ceil(Math.abs(base * habitPct) / 100) : null;
                   const total = base != null ? base + (starIncrease ?? 0) + (habitBonus ?? 0) : null;
                   return (
                     <tr key={key} className="border-t border-neutral-900">
@@ -304,7 +310,10 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
                       </td>
                       <td className="py-1 text-right">
                         {habitBonus != null ? (
-                          <span className="font-semibold text-emerald-400">+{habitBonus.toLocaleString()}</span>
+                          <span className={`font-semibold ${habitBonus < 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                            {habitBonus >= 0 ? "+" : ""}
+                            {habitBonus.toLocaleString()}
+                          </span>
                         ) : (
                           <span className="text-neutral-600">—</span>
                         )}
@@ -318,9 +327,10 @@ export function DragonDetail({ dragon, onBack }: { dragon: Doc<"dragons">; onBac
             <p className="mt-2 text-xs text-neutral-500">
               "Base" is whatever you entered on the list page for this dragon at ★1. "From Stars" is that
               same rarity-rate step applied for every star from ★2 on (the formula above). "From Habits" sums
-              the currently-unlocked-and-leveled Habits' self-modifier % for that stat (see the Habits
-              controls to the left), takes that % of Base, rounds up, and adds it — only shown when at least
-              one unlocked Habit actually has a value there. "Total" is Base + From Stars + From Habits.
+              the guaranteed stat changes on yourself from the Command and currently-unlocked-and-leveled
+              Habits (see the Habits controls to the left) at their peak, takes that % of Base, rounds up,
+              and adds it — only shown when at least one of them touches that stat. Chance-based, conditional
+              and ally-dependent buffs aren't included. "Total" is Base + From Stars + From Habits.
               Blank cells show as "—".
             </p>
           </div>

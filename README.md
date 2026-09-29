@@ -46,32 +46,16 @@ the original reference data with `npx convex run dragons:seed`.
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
 - [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
-- [`convex/habitCapabilities.ts`](convex/habitCapabilities.ts) — structured,
-  hand-entered per-(dragon, habit slot) data: active rounds, how many enemy
-  dragons it targets (1-3), enemy-facing % by level (Fire/Tactical/Physical
-  Damage Received, Strength/Initiative/Intelligence/Instinct Reduced), self
-  modifier % by level (Tactical/Physical/Fire Increase, Strength/Initiative/
-  Intelligence/Instinct Increase, Damage Reduction — entered as a positive %,
-  meant to feed a later survivability figure), and the same set of ally
-  modifier % by level, applied to teammates instead of self — an ally habit
-  also picks a target via `allyTarget`, either a headcount (1-3 allies, the
-  game's own priority picks which) or one specific lane (Left/Right
-  Flank/Vanguard); kept as a discriminated union since the synergy engine
-  will need to treat "some ally" differently from "whoever's in that lane"
-  later. Any percentage row can also carry a Requires Effect (row only
-  applies while the target/self holds that effect) and a Buffed by Effect
-  (doubles the row's values while active — the game mostly just doubles
-  rather than using a distinct number), stored in one `effectLinks` map
-  keyed by row name so new rows never need their own pair of schema fields
-  for this. A separate `rngEffects` array holds chance-based effect procs
-  (e.g. "12.5% chance to Overwhelm 1 Enemy for 2 rounds on Rounds 1,3,6,8")
-  — effect, buff/debuff direction, target (same headcount-or-lane shape as
-  `allyTarget`), duration, its own rounds, and chance % by level, entered
-  free-form since a habit can carry more than one of these (e.g. one entry
-  per proc'd effect); the eventual goal is rolling all of a formation's RNG
-  entries together into a full 10-round chance that a given effect (Burn,
-  say) lands at least once, and how many times; grows over time as new
-  fields get added, see below
+- [`convex/habitCapabilities.ts`](convex/habitCapabilities.ts) — every
+  dragon's Command skill (`habitSlot` 0) and 5 Habits (1-5), each broken into
+  structured **clauses**, one per mechanic; see "Skill clauses" below
+- [`src/engine/habitClauses.ts`](src/engine/habitClauses.ts) — clause types,
+  round/duration math, the assumed troop curve and lane-reach rules, and the
+  plain-English clause summaries the builder shows
+- [`scripts/habit-clauses/`](scripts/habit-clauses) — `draft.mjs` (the
+  hand-written clause breakdown of all 180 habits + 36 Commands) and
+  `build.mjs` (checks every number against the real text and emits the
+  Convex import file)
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
 - [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
 - [`src/admin/`](src/admin) — hidden-ish admin pages, linked from a small nav
@@ -81,10 +65,52 @@ the original reference data with `npx convex run dragons:seed`.
     clicking a dragon on the stats page; a pure sandbox, doesn't affect live scoring
   - `SynergyRules.tsx` (`/admin/synergy-rules`) — read-only view of every
     scoring weight and per-dragon kit effect the real engine uses
-  - `HabitBuilder.tsx` (`/admin/habit-builder`) — pick a dragon, pick one of
-    its 5 habits, read the real per-level description, and fill in
-    `convex/habitCapabilities.ts`'s structured fields for it
+  - `HabitBuilder.tsx` (`/admin/habit-builder`) — pick a dragon, pick its
+    Command or one of its 5 habits, read the real text, and review/edit its
+    clauses (each shown as a one-line summary, click Edit for the full form)
 - [`src/components/`](src/components) — UI
+
+## Skill clauses
+
+Each Command/Habit is a list of clauses. A clause is one mechanic: a stat
+change, Damage Dealt/Received or Recovery Dealt/Received modifier, a damage
+hit, a heal, an applied effect, a cleanse, or a Command modifier — with who
+it hits, when and for how long, its value and chance at each of the 5 habit
+levels, conditions that gate it, boosts that raise it ("doubled vs Taunted
+targets"), "enhanced by" stat, stacking, and shared-roll grouping. Values are
+signed by real direction: Damage Received −4 means taking 4% less. Commands
+have no levels, so their values repeat 5 times. `isCommandHabit` flags the
+Habits that modify or add to the Command (mostly the ★6 one).
+
+Clauses that can't be optimized for are kept but marked `skip`
+(`enemyDep`: depends on what the enemy brings, e.g. cleansing enemy buffs;
+`pve`, `nonCombat`, or a `situational` trigger like "when an enemy
+retreats"). Clauses that only pay off against certain enemies carry
+`bestAgainst` tags (e.g. "High-recovery armies", "Fire damage dealers") so a
+formation can be summarized as "Best against…".
+
+Rules for scoring these (Neill's calls, encoded in
+`src/engine/habitClauses.ts`):
+- **Adjacency**: the Vanguard reaches all 3 lanes (itself included); a flank
+  reaches only itself and the Vanguard.
+- **Ally counts**: "3 Allies" always includes the dragon itself; "N (other)
+  Allies" for N < 3 picks N of the 3, possibly including itself.
+- **Enemy lane priorities** ("prioritizes the Left Flank") are ignored: an
+  enemy Fire Damage Received increase helps every one of our Fire dealers.
+- **Troop capacity** is assumed, not known: a 10-round fight at
+  95/85/75/65/55/45/35/25/15/5% by round (above 75% rounds 1-2, below 50% the
+  final 5 rounds), used for both sides' troop conditions.
+- **Enhanced by** a stat: formula unknown (probably small); stored, treated as
+  flat for now.
+
+To regenerate from the draft (this **replaces** the whole table, including
+any edits made in the builder):
+
+```bash
+npx convex run dragons:list '{}' > dragons.json
+node scripts/habit-clauses/build.mjs . dragons.json
+npx convex import --table habitCapabilities --replace --yes habitCapabilities.jsonl
+```
 
 ## Confirmed game constants
 

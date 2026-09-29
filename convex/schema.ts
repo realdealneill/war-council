@@ -39,97 +39,104 @@ export const dragonFields = {
   baseInitiative: v.optional(v.number()),
 };
 
-// A percentage value per upgrade level (1-5), null where not yet filled in.
-const pctByLevel = v.array(v.union(v.number(), v.null()));
+// A value per upgrade level (1-5), null where not yet filled in. A Command
+// has no levels, so its clauses repeat the same value 5 times.
+const levels = v.array(v.union(v.number(), v.null()));
 
-// An optional condition on one percentage row: an effect that must be present
-// on the target for the row to apply at all, and/or an effect that doubles
-// it when active (the game mostly just doubles rather than using a distinct
-// value — see src/admin/HabitBuilder.tsx). Keyed by row field name (e.g.
-// "fireDmgReceivedPct") in `effectLinks` below, so adding a new percentage
-// row never requires its own pair of schema fields for this.
-export const effectLink = v.object({
-  requiresEffect: v.optional(v.string()),
-  buffedByEffect: v.optional(v.string()),
+const condition = v.object({
+  // target | self | anyAlly | anyEnemy (value = an effect id), troop (archers…),
+  // selfTroops | targetTroops (value like "<50"), stacks (value like "risingTide>=4"),
+  // enemyComp, defending, pve
+  scope: v.string(),
+  value: v.string(),
 });
 
-// Who an Ally modifiers habit targets — either a headcount (1-3 allies, the
-// game seems to pick which ones by its own priority rules) or one specific
-// lane. Neill wants these treated differently in the synergy engine later
-// (a headcount is "some ally, unspecified", a lane is a guaranteed hit on
-// whoever's placed there), so this is a discriminated union rather than one
-// flat enum.
-export const allyTarget = v.union(
-  v.object({ kind: v.literal("count"), count: v.union(v.literal(1), v.literal(2), v.literal(3)) }),
-  v.object({ kind: v.literal("lane"), lane: v.union(v.literal("left"), v.literal("right"), v.literal("vanguard")) })
-);
-
-// One chance-based "Effect RNG" entry — e.g. Antares Habit 1's real wording:
-// "Rounds 1,3,6,8: 12.5% chance to Overwhelm 1 Enemy in any lane for 2
-// rounds (prioritizes the Fire Damage dealers)". A single habit can hold
-// several of these (that same habit also has a Stagger entry on rounds
-// 2,4,7,9), so they live in the `rngEffects` array below rather than as
-// fixed fields — unlike the flat percentage rows, there's no bounded set of
-// them to name ahead of time. `target` reuses the same count-or-lane shape
-// as `allyTarget` above (it applies to enemy debuffs the same way it does
-// to ally buffs). Chance scales by habit level like the percentage rows do;
-// rounds and duration don't (matches every real example seen so far).
-export const rngEffectEntry = v.object({
-  effect: v.optional(v.string()),
-  direction: v.optional(v.union(v.literal("buff"), v.literal("debuff"))),
-  target: v.optional(allyTarget),
-  durationRounds: v.optional(v.number()),
-  rounds: v.array(v.number()),
-  chancePctByLevel: pctByLevel,
-  notes: v.optional(v.string()),
+const clauseTarget = v.object({
+  side: v.union(v.literal("self"), v.literal("ally"), v.literal("enemy")),
+  count: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))),
+  // "N other allies" in the text — kept for fidelity; see src/engine/habitClauses.ts for how counts are scored
+  other: v.optional(v.boolean()),
+  scope: v.optional(v.union(v.literal("any"), v.literal("adjacent"), v.literal("sameLane"))),
+  // lane:left | highest:intelligence | lowest:instinct | mostTroops | leastTroops |
+  // dealsDamage:fire | breed:sentinel | prey | … — a priority unless `filter` is set
+  prefer: v.optional(v.string()),
+  filter: v.optional(v.boolean()),
 });
 
-// Structured, hand-entered capability data for one dragon's one habit slot
-// (1-5) — filled in via /admin/habit-builder while reading the habit's real
-// wording (src/data/generated/habits.json). Meant to grow: new percentage
-// rows (or other fields) get added here over time as Neill decides what's
-// worth capturing, the same way dragons' base stats grew incrementally.
+const timing = v.object({
+  mode: v.union(
+    v.literal("combat"),
+    v.literal("each"),
+    v.literal("odd"),
+    v.literal("even"),
+    v.literal("rounds"),
+    v.literal("event")
+  ),
+  rounds: v.optional(v.array(v.number())),
+  event: v.optional(v.string()),
+});
+
+const duration = v.union(v.number(), v.literal("combat"), v.literal("round"));
+
+// A condition that raises a clause's value/chance/duration/reach instead of gating it,
+// e.g. "This chance is doubled (35%) against targets afflicted with Taunt".
+const boost = v.object({
+  condition: v.optional(condition),
+  rounds: v.optional(v.array(v.number())),
+  valueByLevel: v.optional(levels),
+  chanceByLevel: v.optional(levels),
+  multiplier: v.optional(v.number()),
+  target: v.optional(clauseTarget),
+  duration: v.optional(duration),
+});
+
+// One mechanic of a Command or Habit. Values are signed by real direction:
+// negative lowers the thing (Damage Received -4 = takes 4% less).
+export const clause = v.object({
+  kind: v.union(
+    v.literal("stat"),
+    v.literal("dmgDealt"),
+    v.literal("dmgRecv"),
+    v.literal("recovDealt"),
+    v.literal("recovRecv"),
+    v.literal("hit"),
+    v.literal("heal"),
+    v.literal("effect"),
+    v.literal("cleanse"),
+    v.literal("cmd")
+  ),
+  // stat names, damage types ("physical(CH)" = Command & Habits only), or an effect id
+  what: v.array(v.string()),
+  target: v.optional(clauseTarget),
+  timing,
+  duration: v.optional(duration),
+  valueByLevel: v.optional(levels),
+  // omitted = guaranteed
+  chanceByLevel: v.optional(levels),
+  conditions: v.array(condition),
+  boosts: v.array(boost),
+  enhancedBy: v.optional(v.string()),
+  // clauses on one skill sharing a rollGroup come from a single chance roll
+  rollGroup: v.optional(v.number()),
+  // the value applies once per stack held
+  stack: v.optional(v.object({ max: v.number(), chanceByLevel: v.optional(levels) })),
+  // why this clause can't be optimized for: enemyDep | situational | pve | nonCombat
+  skip: v.optional(v.string()),
+  // enemy types this clause pays off against, rolled up into a formation's "Best Against"
+  bestAgainst: v.array(v.string()),
+  note: v.optional(v.string()),
+});
+
+// A dragon's Command skill (habitSlot 0) or one of its 5 Habits (1-5),
+// broken into structured clauses. Initially generated from the scraped
+// Command/Habit text by scripts/habit-clauses/ and reviewed/edited via
+// /admin/habit-builder. isCommandHabit flags a Habit that modifies or adds to
+// the Command (typically the first habit and the ★6 one).
 export const habitCapabilityFields = {
   dragonId: v.id("dragons"),
-  habitSlot: v.number(), // 1-5
-  // Which of combat's rounds (1-10) this habit is actually active during.
-  activeRounds: v.array(v.number()),
-  // How many enemy dragons this habit's enemy-facing rows below apply to
-  // (1-3) — one setting for the whole habit, not per level or per row.
-  enemyTargetCount: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))),
-  // Enemy-facing: how much this habit raises what the target enemy(s) receive,
-  // or reduces their stats.
-  fireDmgReceivedPct: v.optional(pctByLevel),
-  tacticalDmgReceivedPct: v.optional(pctByLevel),
-  physicalDmgReceivedPct: v.optional(pctByLevel),
-  enemyStrengthReducedPct: v.optional(pctByLevel),
-  enemyInitiativeReducedPct: v.optional(pctByLevel),
-  enemyIntelligenceReducedPct: v.optional(pctByLevel),
-  enemyInstinctReducedPct: v.optional(pctByLevel),
-  // Self modifiers: this dragon's own damage-dealt/stat increases.
-  selfTacticalIncreasePct: v.optional(pctByLevel),
-  selfPhysicalIncreasePct: v.optional(pctByLevel),
-  selfFireIncreasePct: v.optional(pctByLevel),
-  selfStrengthIncreasePct: v.optional(pctByLevel),
-  selfInitiativeIncreasePct: v.optional(pctByLevel),
-  selfIntelligenceIncreasePct: v.optional(pctByLevel),
-  selfInstinctIncreasePct: v.optional(pctByLevel),
-  selfDamageReductionPct: v.optional(pctByLevel),
-  // Ally modifiers: same shape as Self modifiers, but applied to teammate(s)
-  // instead of this dragon. See `allyTarget` above for who it hits.
-  allyTarget: v.optional(allyTarget),
-  allyTacticalIncreasePct: v.optional(pctByLevel),
-  allyPhysicalIncreasePct: v.optional(pctByLevel),
-  allyFireIncreasePct: v.optional(pctByLevel),
-  allyStrengthIncreasePct: v.optional(pctByLevel),
-  allyInitiativeIncreasePct: v.optional(pctByLevel),
-  allyIntelligenceIncreasePct: v.optional(pctByLevel),
-  allyInstinctIncreasePct: v.optional(pctByLevel),
-  allyDamageReductionPct: v.optional(pctByLevel),
-  // Chance-based effect procs (Overwhelm/Stun/Burn/etc.) — see `rngEffectEntry` above.
-  rngEffects: v.optional(v.array(rngEffectEntry)),
-  // Per-row Requires Effect / Buffed by Effect, see `effectLink` above.
-  effectLinks: v.optional(v.record(v.string(), effectLink)),
+  habitSlot: v.number(),
+  isCommandHabit: v.boolean(),
+  clauses: v.array(clause),
 };
 
 export default defineSchema({
