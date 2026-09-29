@@ -7,13 +7,14 @@ import { BREED_LABEL, ROLE_SHORT, cx, fmtInt } from "./format";
 
 const UNLOCK = [2, 4, 6, 8, 10];
 
-// Level and per-habit levels aren't in the patch: the engine doesn't read
-// them yet (recommendations use the Assumed habits controls), so the drawer
-// doesn't offer controls that would change nothing.
+// Per-habit levels aren't in the patch: power and synergy both use the
+// Assumed habits controls, so the drawer doesn't offer a control that would
+// change nothing.
 export interface RosterPatch {
   inRoster?: boolean;
   active?: boolean;
   starRank?: number;
+  level?: number;
 }
 
 export interface RosterDrawerProps {
@@ -113,7 +114,7 @@ export function RosterDrawer({ open, onClose, dragons, inRoster, onChange, onBul
       </header>
       <div className="flex items-start gap-2 border-b border-line bg-surface-sunken px-4 py-2 text-[11px] leading-4 text-ink-muted">
         <Icon name="info" size={12} className="mt-0.5 shrink-0 text-habit" />
-        Star rank changes power, and which habits count under "By star rank". Per-habit levels aren't tracked yet — recommendations use the Assumed habits controls.
+        Power = Stars + Habits + Level, from the confirmed tables. Star rank also sets which habits count under "By star rank"; habit levels come from the Assumed habits controls.
       </div>
       <ul className="flex-1 divide-y divide-line overflow-y-auto overscroll-contain">
         {list.map((d) => {
@@ -143,8 +144,21 @@ export function RosterDrawer({ open, onClose, dragons, inRoster, onChange, onBul
                 {inR && <Toggle checked={d.active} onChange={(v) => onChange(d.id, { active: v })} label={`${d.name} active`} />}
               </div>
               {inR && (
-                <div className="mt-2.5 pl-7">
+                <div className="mt-2.5 grid gap-2 pl-7 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-x-4">
                   <StarInput value={d.starRank} label={`${d.name} star rank`} onChange={(n) => onChange(d.id, { starRank: n })} />
+                  <label className="flex items-center gap-2 text-[11px] text-ink-faint">
+                    Level
+                    <input
+                      type="range" min={1} max={50} value={d.level ?? 1}
+                      onChange={(e) => onChange(d.id, { level: parseInt(e.target.value, 10) })}
+                      className="df-range-sm h-4 w-28 cursor-pointer" aria-label={`${d.name} level`}
+                    />
+                    <input
+                      type="number" min={1} max={50} value={d.level ?? 1}
+                      onChange={(e) => onChange(d.id, { level: Math.max(1, Math.min(50, parseInt(e.target.value || "1", 10))) })}
+                      className="tnum h-7 w-12 rounded-md border border-line-strong bg-surface-sunken px-1.5 text-xs text-ink"
+                    />
+                  </label>
                 </div>
               )}
             </li>

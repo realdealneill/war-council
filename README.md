@@ -34,13 +34,14 @@ the original reference data with `npx convex run dragons:seed`.
   reference site's own data files (see below) via `scripts/` — don't hand-edit
   `src/data/generated/*.json`
 - [`src/engine/`](src/engine) — the scoring/optimization algorithm:
-  - `power.ts` — power estimation (rarity/star/level, still the old guessed
-    formula — see below), goal-adjusted power
+  - `power.ts` — `confirmedPower()` (Stars + Habits + Level from the
+    confirmed tables below), the old guessed `estimatePower()` kept only as a
+    fallback, and goal-adjusted power
   - `powerFromStars.ts` / `powerFromHabits.ts` / `powerFromLevel.ts` —
     **confirmed** (Level: mostly bounded extrapolation) real power values
     by rarity, from Star Rank, Habits, and Level (see "Confirmed game
-    constants" below) — not yet wired into `power.ts`/live scoring, only
-    into the admin sandbox
+    constants" below) — summed by `confirmedPower()` into each roster
+    dragon's power in the builder, and shown piece by piece in the admin sandbox
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
   - `scoring.ts` — `evaluatePlacement()` / `bestArmy()`, the synergy model
   - `optimizer.ts` — partitions a roster into armies (greedy seed + local
@@ -180,8 +181,10 @@ looks similar but is marked as a guess:
 Total Power (Stars + Habits + Level) is now fully sourced from confirmed
 data in `src/admin/DragonDetail.tsx` — no more free-tunable guesses for
 Power, though Level's numbers carry the caveat above. Stats' mythic rate
-is still a guess. None of this is wired into `src/engine/power.ts` or real
-army scoring yet; that's still the original guessed formula.
+is still a guess. The Formation Builder uses the same sum for every roster
+dragon's power (`confirmedPower()` in `src/engine/power.ts`), with Level
+from the roster drawer (default 15) and habits from the Assumed habits /
+Habit level controls — the same loadout habit synergy uses.
 
 ## `reference/`
 

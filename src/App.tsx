@@ -9,6 +9,7 @@
 import * as React from "react";
 import { evaluateFormation, recommendFlankPairs, withEmphasis, type FormationContext } from "./engine/formation";
 import { allHabitsAt, loadoutFromStars, type SkillsByDragon } from "./engine/habitSynergy";
+import { confirmedPower } from "./engine/power";
 import { flankDamageType, rankFlankCandidates } from "./engine/vanguardFit";
 import { useCatalog } from "./hooks/useCatalog";
 import { useHabitSkills } from "./hooks/useHabitSkills";
@@ -82,7 +83,8 @@ function AdminMenu() {
   );
 }
 
-type Override = { starRank?: number; active?: boolean };
+// reignLevel is the dragon's Level (1-50), which Power from Level reads.
+type Override = { starRank?: number; reignLevel?: number; active?: boolean };
 
 function App() {
   const phone = useMedia("(max-width: 767px)");
@@ -106,10 +108,20 @@ function App() {
   const [skillFor, setSkillFor] = React.useState<Dragon | null>(null);
   const [controlsOpen, setControlsOpen] = React.useState(false);
 
-  // Engine dragons with the roster's overrides applied (new objects only when an override changes).
+  // One habit loadout for both power and synergy, so they always agree.
+  const loadout = React.useMemo(
+    () => (controls.habitAssumption === "all" ? allHabitsAt(controls.habitLevel) : loadoutFromStars(controls.habitLevel)),
+    [controls.habitAssumption, controls.habitLevel]
+  );
+  // Engine dragons with the roster's overrides applied and their real power
+  // (Stars + Habits + Level, from the confirmed tables) set.
   const dragons = React.useMemo<EngineDragon[]>(
-    () => catalog.map((d) => (overrides[d.id] ? { ...d, ...overrides[d.id] } : d)),
-    [catalog, overrides]
+    () =>
+      catalog.map((c) => {
+        const d = { ...c, ...overrides[c.id] };
+        return { ...d, power: confirmedPower(d, loadout(d)) ?? 0 };
+      }),
+    [catalog, overrides, loadout]
   );
   const uiDragons = React.useMemo(() => dragons.map(toUiDragon), [dragons]);
   const inRoster = React.useMemo(() => new Set(dragons.filter((d) => !removed.has(d.id)).map((d) => d.id)), [dragons, removed]);
@@ -127,10 +139,10 @@ function App() {
       emphasis: 1,
       habits: {
         skills: skills ?? NO_SKILLS,
-        loadout: controls.habitAssumption === "all" ? allHabitsAt(controls.habitLevel) : loadoutFromStars(controls.habitLevel),
+        loadout,
       },
     }),
-    [controls.habitAssumption, controls.habitLevel, skills]
+    [loadout, skills]
   );
 
   const flankPool = React.useMemo(() => pool.filter((d) => d !== vanguard), [pool, vanguard]);
@@ -255,6 +267,7 @@ function App() {
     const o: Override = {};
     if (p.active !== undefined) o.active = p.active;
     if (p.starRank !== undefined) o.starRank = p.starRank;
+    if (p.level !== undefined) o.reignLevel = p.level;
     if (Object.keys(o).length) setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...o } }));
   };
   const bulk = (a: "addAll" | "removeAll" | "activateAll" | "benchAll", ids: string[]) => {

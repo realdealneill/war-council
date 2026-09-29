@@ -27,6 +27,7 @@ export function toUiDragon(d: EngineDragon): UI.Dragon {
       damageType: d.damageType as UI.DamageType,
       power: dragonPower(d),
       starRank: d.starRank,
+      level: d.reignLevel,
       affinity: {
         cavalry: d.affinity.cavalry,
         shieldbearers: d.affinity.shieldbearers,

@@ -4,9 +4,8 @@
 // This is independent of Level and Habits (same as how the 4 base stats
 // turned out to work) — it's its own additive bucket, not a multiplier on a
 // rarity coefficient the way the old estimatePower() in power.ts treats it.
-// That old formula is UNCHANGED and still what the live app uses for real
-// army scoring; this table only feeds src/admin/DragonDetail.tsx's sandbox
-// until Level and Habits are confirmed too and this is ready to replace it.
+// It's summed with Habits and Level by confirmedPower() in power.ts, which
+// replaced that old formula for the builder's roster dragons.
 //
 // Real values were fit with a cubic in star-rank per rarity (independently,
 // not scaled from one another) and checked for a possible ★9/★10 "late star"

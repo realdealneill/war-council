@@ -9,8 +9,7 @@
 //
 // Additive with powerFromStars.ts's Power-from-Star-Rank, same as that file.
 // No mythic data exists yet (no mythic dragons exist in the game currently).
-// Not yet wired into engine/power.ts / real army scoring — see that file's
-// header comment for why.
+// Summed with Stars and Level by confirmedPower() in engine/power.ts.
 import type { Rarity } from "../types";
 
 export const POWER_FROM_HABIT_LEVEL: Partial<Record<Rarity, number[]>> = {
