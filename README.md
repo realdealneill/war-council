@@ -6,9 +6,9 @@ as a from-first-principles alternative to https://dragonfire-formations.com/.
 Stack: React 19 + Vite + TypeScript + Tailwind v4 + Convex. The 36-dragon
 *catalog* (species-level attributes — rarity, breed, role, base stats) lives
 in Convex. Your personal *roster* (which dragons you've added, star rank,
-active toggle) is in-memory only for now (see
-[`src/hooks/useRoster.ts`](src/hooks/useRoster.ts)) — it resets on every
-reload. There's no roster-saving feature yet; when there is, it should be
+active toggle) is in-memory only for now (the roster state in
+[`src/App.tsx`](src/App.tsx)) — it resets on every reload, starting with
+all 36 dragons in it. There's no roster-saving feature yet; when there is, it should be
 Convex-backed and store just ids/overrides re-joined against the live
 catalog, not a frozen snapshot (a localStorage version of that snapshot
 approach is what this replaced, and it went stale the moment the catalog's
@@ -43,7 +43,21 @@ the original reference data with `npx convex run dragons:seed`.
     into the admin sandbox
   - `effects.ts` — a dragon's unlocked Command/Habit effects at its star rank
   - `scoring.ts` — `evaluatePlacement()` / `bestArmy()`, the synergy model
-  - `optimizer.ts` — partitions a roster into armies (greedy seed + local search)
+  - `optimizer.ts` — partitions a roster into armies (greedy seed + local
+    search); no page uses it right now — the old "Optimize Formations" view
+    was dropped when the app moved to the design system's Formation Builder
+  - `habitSynergy.ts` — **habit synergy**: simulates rounds 1-10 from the
+    real Command/Habit clauses and credits only value that crosses between
+    dragons (buffs on teammates, enemy debuffs a teammate cashes in, payoffs
+    a teammate sets up like "doubled vs Burned"). Every conversion factor is
+    a guess, in `HABIT_WEIGHTS`
+  - `formation.ts` — the Build-a-Formation evaluator: `score = basePower ×
+    (1 + structural + habit synergy)`, ranked by `basePower × (1 + emphasis
+    × synergy)`; also `recommendFlankPairs()`. Uses `scoring.ts` with
+    `kitTags: false` so the old kits.json effect tags don't double-count
+    what the clauses now model. `withEmphasis()` re-ranks an evaluation at a
+    new emphasis without re-simulating, which keeps the slider instant
+  - `vanguardFit.ts` — per-flank candidate ranking for the builder
 - [`convex/schema.ts`](convex/schema.ts) / [`convex/dragons.ts`](convex/dragons.ts) —
   the `dragons` catalog table + `list`/`updateStats`/`seed` functions
 - [`convex/habitCapabilities.ts`](convex/habitCapabilities.ts) — every
@@ -57,7 +71,7 @@ the original reference data with `npx convex run dragons:seed`.
   `build.mjs` (checks every number against the real text and emits the
   Convex import file)
 - [`src/hooks/useCatalog.ts`](src/hooks/useCatalog.ts) — the catalog, loaded from Convex
-- [`src/hooks/useRoster.ts`](src/hooks/useRoster.ts) — roster state (in-memory only, no persistence yet)
+- [`src/hooks/useHabitSkills.ts`](src/hooks/useHabitSkills.ts) — every dragon's Command + Habit clauses, for the engine
 - [`src/admin/`](src/admin) — hidden-ish admin pages, linked from a small nav
   bar (`src/components/AdminNav.tsx`) rather than the main app UI:
   - `DragonStatsAdmin.tsx` (`/admin/dragon-stats`) — dense base-stat entry form
@@ -68,7 +82,22 @@ the original reference data with `npx convex run dragons:seed`.
   - `HabitBuilder.tsx` (`/admin/habit-builder`) — pick a dragon, pick its
     Command or one of its 5 habits, read the real text, and review/edit its
     clauses (each shown as a one-line summary, click Edit for the full form)
-- [`src/components/`](src/components) — UI
+- [`src/App.tsx`](src/App.tsx) — the Formation Builder page: pick a Vanguard,
+  get the top flank pairs and per-flank candidates, and see the score math,
+  structural bonuses, habit-synergy links (drawn as arrows between the lanes)
+  and a 10-round uptime timeline for the placed, hovered or #1 formation. The
+  admin pages are under its header's Admin menu
+- [`src/ui/`](src/ui) — the "Dragonfire War Council" design system's
+  components, ported from its `components/src`
+  (https://claude.ai/artifact/UXBsbjeLPftrKQVdQAgcWU). They take display
+  shapes (`src/ui/types.ts`); `src/ui/adapt.ts` converts engine output into
+  them. Tokens are the CSS variables at the top of `src/index.css`. The
+  roster drawer only offers star rank and active/benched, since per-dragon
+  level and habit levels aren't read by the engine yet
+- [`src/assets/dragons/`](src/assets/dragons) — dragon artwork
+  (`scripts/fetch-dragon-art.mjs`); 8 dragons have none and render the
+  design's "Artwork pending" crest
+- [`src/components/AdminNav.tsx`](src/components/AdminNav.tsx) — the admin pages' nav bar
 
 ## Skill clauses
 

@@ -1,12 +1,157 @@
+/* "Dragonfire War Council" design system — tokens from its tokens.json, the
+   @theme mapping from its components/src/tailwind.css. One dark theme. */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
-@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #0b0c0f;
+  --surface: #13151a;
+  --surface-raised: #1a1d24;
+  --surface-sunken: #0f1115;
+  --surface-hover: #23272f;
+  --line: #272b34;
+  --line-strong: #636b7c;
+  --ink: #ede8de;
+  --ink-muted: #a9a296;
+  --ink-faint: #968f84;
+  --on-ink: #14151a;
+  --parchment-hover: #d9d3c7;
+  --focus: #ede8de;
+  --rarity-rare: #3b82f6;
+  --rarity-epic: #a855f7;
+  --rarity-legendary: #eab308;
+  --rarity-mythic: #ef4444;
+  --rarity-rare-ink: #7fb0fb;
+  --rarity-epic-ink: #c79bfb;
+  --rarity-legendary-ink: #f2cd4b;
+  --rarity-mythic-ink: #f89090;
+  --pos: #5fd08a;
+  --neg: #f0a33a;
+  --habit: #4cc3f0;
+  --structural: #b3ac9f;
+  --score: #b69cff;
+  --base-bar: #4b505b;
+  --dmg-physical: #d0d6df;
+  --dmg-tactical: #3fd3b8;
+  --dmg-fire: #ff8a4c;
+  --shadow-drawer: -24px 0 48px rgba(0, 0, 0, 0.55);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-on-ink: var(--on-ink);
+  --color-parchment-hover: var(--parchment-hover);
+  --color-focus: var(--focus);
+  --color-rarity-rare: var(--rarity-rare);
+  --color-rarity-epic: var(--rarity-epic);
+  --color-rarity-legendary: var(--rarity-legendary);
+  --color-rarity-mythic: var(--rarity-mythic);
+  --color-rarity-rare-ink: var(--rarity-rare-ink);
+  --color-rarity-epic-ink: var(--rarity-epic-ink);
+  --color-rarity-legendary-ink: var(--rarity-legendary-ink);
+  --color-rarity-mythic-ink: var(--rarity-mythic-ink);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-habit: var(--habit);
+  --color-structural: var(--structural);
+  --color-score: var(--score);
+  --color-base-bar: var(--base-bar);
+  --color-dmg-physical: var(--dmg-physical);
+  --color-dmg-tactical: var(--dmg-tactical);
+  --color-dmg-fire: var(--dmg-fire);
+  --shadow-drawer: var(--shadow-drawer);
+}
+@theme {
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-sans: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
   html {
     color-scheme: dark;
   }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
-
-body {
-  margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .df-hatch {
+    background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.28) 0 3px, transparent 3px 6px);
+  }
+}
+@layer components {
+  .df-range,
+  .df-range-sm {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    margin: 0;
+  }
+  .df-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: var(--ink);
+    border: 3px solid var(--score);
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .df-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--ink);
+    border: 3px solid var(--score);
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .df-range-sm::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--line-strong);
+  }
+  .df-range-sm::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -4px;
+    border-radius: 9999px;
+    background: var(--ink);
+  }
+  .df-range-sm::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--line-strong);
+  }
+  .df-range-sm::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--ink);
+  }
+  .df-check {
+    accent-color: var(--ink);
+  }
 }

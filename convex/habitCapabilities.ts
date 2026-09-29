@@ -15,6 +15,25 @@ export const listForDragon = query({
       .collect(),
 });
 
+// Every dragon's Commands + Habits at once, keyed by dragon name, for the
+// formation engine (src/engine/habitSynergy.ts). Bounded like dragons.list:
+// ~36 dragons × 6 skills, never user-generated.
+export const listAll = query({
+  args: {},
+  returns: v.array(
+    v.object({ dragonName: v.string(), habitSlot: v.number(), isCommandHabit: v.boolean(), clauses: v.array(clause) })
+  ),
+  handler: async (ctx) => {
+    const dragons = await ctx.db.query("dragons").take(200);
+    const names = new Map(dragons.map((d) => [d._id, d.name]));
+    const skills = await ctx.db.query("habitCapabilities").take(2000);
+    return skills.flatMap((s) => {
+      const dragonName = names.get(s.dragonId);
+      return dragonName ? [{ dragonName, habitSlot: s.habitSlot, isCommandHabit: s.isCommandHabit, clauses: s.clauses }] : [];
+    });
+  },
+});
+
 // Replaces one skill's whole clause list (the builder edits the list client-side).
 export const save = mutation({
   args: {

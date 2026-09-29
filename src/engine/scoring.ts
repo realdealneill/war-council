@@ -10,7 +10,7 @@ import { MODEL } from "../data";
 import { dragonEffects, appliesControl, holds, isDPS, supplies } from "./effects";
 import { DEFENSE_WEIGHT, dragonPower } from "./power";
 import type {
-  ArmyEvaluation, Dragon, EffectId, Goal, Placement, SynergyEntry, TroopType, VanguardSkill,
+  ArmyEvaluation, Dragon, EffectId, Goal, Placement, SynergyCategory, SynergyEntry, TroopType, VanguardSkill,
 } from "../types";
 import { DRAGON_KITS } from "../data";
 
@@ -129,6 +129,14 @@ export function troopMatchup(myTroop: TroopType | null, enemyTroop: TroopType | 
 export interface EvaluateOptions {
   goal?: Goal;
   enemyTroop?: TroopType | null;
+  /**
+   * Score the coarse kit-effect tags (section 4: kits.json's
+   * applies/grants/wants lists) and their "wants X" warnings. Default true.
+   * The Formation Builder turns this off because it scores the real
+   * Command/Habit clauses instead (see habitSynergy.ts) — counting both
+   * would double-count the same mechanics.
+   */
+  kitTags?: boolean;
 }
 
 export function evaluatePlacement(placement: Placement, troopType: TroopType | null, opts: EvaluateOptions = {}): ArmyEvaluation {
@@ -147,10 +155,10 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   const warnings: string[] = [];
   let bonus = 0;
 
-  const add = (text: string, pct: number, refPower?: number) => {
+  const add = (category: SynergyCategory, text: string, pct: number, refPower?: number) => {
     const amt = pct * (refPower ?? basePower);
     bonus += amt;
-    synergies.push({ text, pct: amt / basePower });
+    synergies.push({ text, pct: amt / basePower, category });
   };
 
   // --- 1. Affinity with the chosen troop type ---
@@ -160,14 +168,14 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
       const a = d.affinity?.[troopType] ?? 0;
       if (a === "+") {
         positives++;
-        add(`${d.name}: positive ${troopType} affinity (+${Math.round(W.affinityBonus * 100)}% stats)`, W.affinityBonus, pw(d));
+        add("troop", `${d.name}: positive ${troopType} affinity (+${Math.round(W.affinityBonus * 100)}% stats)`, W.affinityBonus, pw(d));
       } else if (a === "-") {
-        bonus -= W.affinityPenalty * pw(d);
+        add("troop", `${d.name}: negative ${troopType} affinity (-${Math.round(W.affinityPenalty * 100)}% stats)`, -W.affinityPenalty, pw(d));
         warnings.push(`${d.name} has NEGATIVE ${troopType} affinity (-${Math.round(W.affinityPenalty * 100)}%)`);
       }
     });
     if (positives >= 2) {
-      add(`Stacked ${troopType} affinity across ${positives} dragons`, W.affinityStackPerExtra * (positives - 1));
+      add("troop", `Stacked ${troopType} affinity across ${positives} dragons`, W.affinityStackPerExtra * (positives - 1));
     }
   }
 
@@ -175,9 +183,9 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   // the reference site shows this matchup but never scores it). ---
   if (troopType && opts.enemyTroop) {
     const m = troopMatchup(troopType, opts.enemyTroop);
-    if (m.delta === 1) add(`${troopType} has the advantage vs ${opts.enemyTroop}`, W.matchupBonus);
+    if (m.delta === 1) add("troop", `${troopType} has the advantage vs ${opts.enemyTroop}`, W.matchupBonus);
     else if (m.delta === -1) {
-      bonus -= W.matchupPenalty * basePower;
+      add("troop", `${troopType} is at a disadvantage vs ${opts.enemyTroop}`, -W.matchupPenalty);
       warnings.push(`${troopType} is at a disadvantage vs ${opts.enemyTroop} (-${Math.round(W.matchupPenalty * 100)}%)`);
     }
   }
@@ -191,13 +199,13 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
     const skill = vanguardFor(vg);
     if (skill) {
       const selfPct = buffValue(skill.self, vg, defense);
-      if (selfPct > 0) add(`${vg.name} in Vanguard: ${skill.selfText}`, selfPct, pw(vg));
+      if (selfPct > 0) add("vanguard", `${vg.name} in Vanguard: ${skill.selfText}`, selfPct, pw(vg));
 
       const receiver = skill.flankPos === "left" ? left : right;
       const flankName = skill.flankPos === "left" ? "Left Flank" : "Right Flank";
       if (receiver) {
         const pct = buffValue(skill.flank, receiver, defense);
-        if (pct > 0) add(`${vg.name} buffs the ${flankName}: ${skill.flankText} → ${receiver.name}`, pct, pw(receiver));
+        if (pct > 0) add("vanguard", `${vg.name} buffs the ${flankName}: ${skill.flankText} → ${receiver.name}`, pct, pw(receiver));
         const wasted = mismatchedDamageBuff(skill.flank, receiver);
         if (wasted) {
           warnings.push(
@@ -213,66 +221,69 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   }
 
   // --- 3. Role-position fit ---
-  if (right && right.role === "physical") add(`${right.name} (Physical DPS) correctly on Right Flank`, W.positionFitRightPhysical, pw(right));
+  if (right && right.role === "physical") add("position", `${right.name} (Physical DPS) correctly on Right Flank`, W.positionFitRightPhysical, pw(right));
   if (left && (left.role === "tactical" || left.role === "fire" || left.role === "healer"))
-    add(`${left.name} (${left.role}) correctly on Left Flank`, W.positionFitLeftSupport, pw(left));
-  if (vg && vg.role === "tank") add(`${vg.name} (Tank) correctly in Vanguard`, W.positionFitVanguardTank * defense, pw(vg));
+    add("position", `${left.name} (${left.role}) correctly on Left Flank`, W.positionFitLeftSupport, pw(left));
+  if (vg && vg.role === "tank") add("position", `${vg.name} (Tank) correctly in Vanguard`, W.positionFitVanguardTank * defense, pw(vg));
   if (right && right.role === "tank") warnings.push(`${right.name} is a Tank but on the Right Flank — usually better in Vanguard.`);
 
   // --- 4. Kit synergies: what each dragon needs vs what the others supply ---
+  const kitTags = opts.kitTags ?? true;
   const wantsMet = new Set<string>();
   const suppliedBy = new Set<string>();
-  dragons.forEach((d) => {
+  if (kitTags) dragons.forEach((d) => {
     dragonEffects(d).wants.forEach((want) => {
       const source = dragons.find((o) => o !== d && supplies(o, want));
       if (!source) return;
       wantsMet.add(d.id);
       suppliedBy.add(source.id);
       const name = EFFECT_NAME[want] ?? want;
-      add(`${d.name} hits harder with ${name} — supplied by ${source.name}`, W.wantValue[want] ?? W.wantValueDefault, pw(d));
+      add("kit", `${d.name} hits harder with ${name} — supplied by ${source.name}`, W.wantValue[want] ?? W.wantValueDefault, pw(d));
     });
   });
 
-  const anyTaunt = dragons.some((d) => applies(d, "taunt"));
-  const anySustain = dragons.some((d) => grantsEffect(d, "recovery") || grantsEffect(d, "cleanse"));
-  const anyMitigation = dragons.some((d) => grantsEffect(d, "mitigation") || grantsEffect(d, "resistance") || grantsEffect(d, "protect"));
-  const advantageGivers = dragons.filter((d) => grantsEffect(d, "advantage"));
-  const softeners = dragons.filter((d) => applies(d, "vulnerable") || applies(d, "weakened") || applies(d, "debuff"));
-  const controllers = dragons.filter((d) => appliesControl(d));
-  const scalers = dragons.filter((d) => holds(d, "mirage") || holds(d, "doubleStrike") || holds(d, "risingTide"));
+  if (kitTags) {
+    const anyTaunt = dragons.some((d) => applies(d, "taunt"));
+    const anySustain = dragons.some((d) => grantsEffect(d, "recovery") || grantsEffect(d, "cleanse"));
+    const anyMitigation = dragons.some((d) => grantsEffect(d, "mitigation") || grantsEffect(d, "resistance") || grantsEffect(d, "protect"));
+    const advantageGivers = dragons.filter((d) => grantsEffect(d, "advantage"));
+    const softeners = dragons.filter((d) => applies(d, "vulnerable") || applies(d, "weakened") || applies(d, "debuff"));
+    const controllers = dragons.filter((d) => appliesControl(d));
+    const scalers = dragons.filter((d) => holds(d, "mirage") || holds(d, "doubleStrike") || holds(d, "risingTide"));
 
-  if (anyTaunt && (anySustain || anyMitigation)) add("Taunt + sustain: the taunting dragon holds the front far longer", W.tauntSustain * defense);
-  if (advantageGivers.length) {
-    const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`${advantageGivers[0].name} grants Advantage to ${dealers} damage dealer(s)`, W.advantageGiverPerDealer * dealers);
-  }
-  if (softeners.length) {
-    const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`${softeners.length} dragon(s) soften the enemy for ${dealers} damage dealer(s)`, W.softenerPerCount * softeners.length);
-  }
-  if (controllers.length >= W.controlStackMin) add(`Control stack: ${controllers.length} dragons apply Stun/Overwhelm/Confusion`, W.controlStack);
-  scalers.forEach((d) => {
-    if (anySustain || anyMitigation) add(`${d.name} scales through long fights thanks to team sustain`, W.risingTideNeedsMet, pw(d));
-  });
+    if (anyTaunt && (anySustain || anyMitigation)) add("kit", "Taunt + sustain: the taunting dragon holds the front far longer", W.tauntSustain * defense);
+    if (advantageGivers.length) {
+      const dealers = dragons.filter(isDPS).length;
+      if (dealers) add("kit", `${advantageGivers[0].name} grants Advantage to ${dealers} damage dealer(s)`, W.advantageGiverPerDealer * dealers);
+    }
+    if (softeners.length) {
+      const dealers = dragons.filter(isDPS).length;
+      if (dealers) add("kit", `${softeners.length} dragon(s) soften the enemy for ${dealers} damage dealer(s)`, W.softenerPerCount * softeners.length);
+    }
+    if (controllers.length >= W.controlStackMin) add("kit", `Control stack: ${controllers.length} dragons apply Stun/Overwhelm/Confusion`, W.controlStack);
+    scalers.forEach((d) => {
+      if (anySustain || anyMitigation) add("kit", `${d.name} scales through long fights thanks to team sustain`, W.risingTideNeedsMet, pw(d));
+    });
 
-  dragons.forEach((d) => {
-    if (!holds(d, "risingTide")) return;
-    const needs = dragonEffects(d).wants;
-    if (!needs.length || !needs.every((w) => dragons.some((o) => o !== d && supplies(o, w)))) return;
-    add(`${d.name} stacks Rising Tide fast enough to hit its 4+ and 6+ thresholds`, W.risingTideThresholdMet, pw(d));
-  });
+    dragons.forEach((d) => {
+      if (!holds(d, "risingTide")) return;
+      const needs = dragonEffects(d).wants;
+      if (!needs.length || !needs.every((w) => dragons.some((o) => o !== d && supplies(o, w)))) return;
+      add("kit", `${d.name} stacks Rising Tide fast enough to hit its 4+ and 6+ thresholds`, W.risingTideThresholdMet, pw(d));
+    });
+  }
 
   // --- 5. Role balance ---
   const tanks = dragons.filter((d) => d.role === "tank").length;
   const dps = dragons.filter(isDPS).length;
   const healers = dragons.filter((d) => d.role === "healer").length;
-  if (tanks >= 1 && dps >= 1) add("Balanced core: tank + damage dealer(s)", W.balancedCore * defense);
+  if (tanks >= 1 && dps >= 1) add("balance", "Balanced core: tank + damage dealer(s)", W.balancedCore * defense);
   if (dps === 0 && dragons.length === 3) warnings.push("No damage dealer in this army — low kill pressure.");
   if (tanks >= 3) warnings.push("Three tanks — very little damage output.");
   if (healers >= 2) warnings.push("Two healers — consider swapping one for damage.");
   if (dragons.length < 3) warnings.push(`Only ${dragons.length} dragon(s) in this army.`);
 
-  dragons.forEach((d) => {
+  if (kitTags) dragons.forEach((d) => {
     dragonEffects(d).wants.forEach((want) => {
       if (dragons.some((o) => o !== d && supplies(o, want))) return;
       warnings.push(`${d.name} wants ${EFFECT_NAME[want] ?? want} on the field — no teammate supplies it.`);
@@ -282,15 +293,15 @@ export function evaluatePlacement(placement: Placement, troopType: TroopType | n
   // --- 6. Formation goal emphasis ---
   if (goal === "dps") {
     const dealers = dragons.filter(isDPS).length;
-    if (dealers) add(`DPS focus: ${dealers} damage dealer(s)`, W.dpsFocusPerDealer * dealers);
+    if (dealers) add("goal", `DPS focus: ${dealers} damage dealer(s)`, W.dpsFocusPerDealer * dealers);
     const ampl = dragons.filter((d) => applies(d, "vulnerable") || applies(d, "burn") || holds(d, "doubleStrike") || holds(d, "mirage") || grantsEffect(d, "advantage")).length;
-    if (ampl) add(`Offensive kit: ${ampl} damage-amplifying dragon(s)`, W.offensiveKitPerAmplifier * ampl);
+    if (ampl) add("goal", `Offensive kit: ${ampl} damage-amplifying dragon(s)`, W.offensiveKitPerAmplifier * ampl);
   } else if (goal === "synergy") {
     // Every dragon either feeds a teammate's kit or is fed by one — a fully
     // connected trio, not just one strong pair riding along with a passenger.
     const connected = new Set([...wantsMet, ...suppliedBy]);
     if (dragons.length === 3 && connected.size === 3) {
-      add("All 3 dragons are linked into each other's kits — no passenger", W.synergyNoPassenger);
+      add("goal", "All 3 dragons are linked into each other's kits — no passenger", W.synergyNoPassenger);
     }
   }
 

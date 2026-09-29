@@ -90,9 +90,13 @@ export interface Placement {
   right: Dragon | null;
 }
 
+/** Which part of scoring.ts a structural line comes from; unset for habit-synergy lines. */
+export type SynergyCategory = "troop" | "vanguard" | "position" | "balance" | "kit" | "goal";
+
 export interface SynergyEntry {
   text: string;
   pct: number;
+  category?: SynergyCategory;
 }
 
 export interface ArmyEvaluation {

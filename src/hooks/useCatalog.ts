@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import { useMemo } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Dragon, Rarity } from "../types";
 
@@ -19,7 +20,9 @@ function defaultStarRank(rarity: Rarity): number {
 export function useCatalog() {
   const rows = useQuery(api.dragons.list);
 
-  const catalog: Dragon[] = (rows ?? []).map((r) => ({
+  // Memoized so every render doesn't hand out new Dragon objects — the
+  // builder's recommendations and art lookups are memoized on identity.
+  const catalog: Dragon[] = useMemo(() => (rows ?? []).map((r) => ({
     id: r._id,
     name: r.name,
     rarity: r.rarity,
@@ -38,7 +41,7 @@ export function useCatalog() {
     power: 0,
     troopCapacity: 0,
     tags: [],
-  }));
+  })), [rows]);
 
   return { catalog, loading: rows === undefined };
 }
