@@ -1,20 +1,28 @@
 import * as React from "react";
+import { MODEL } from "../data";
 import type { Breed, Dragon, Rarity, Role } from "./types";
 import { Button, RarityBadge, Segmented, Toggle } from "./Chips";
 import { DragonAvatar, DragonName } from "./DragonArt";
 import { Icon } from "./Icon";
 import { BREED_LABEL, ROLE_SHORT, cx, fmtInt } from "./format";
 
-const UNLOCK = [2, 4, 6, 8, 10];
+/** Star rank that unlocks Habit 1-5 (★2 / 4 / 6 / 8 / 10). */
+export const HABIT_UNLOCK = MODEL.HABIT_UNLOCK_STARS;
+const UNLOCK = HABIT_UNLOCK;
+const RARITY_ORDER: Record<Rarity, number> = { mythic: 0, legendary: 1, epic: 2, rare: 3 };
 
-// Per-habit levels aren't in the patch: power and synergy both use the
-// Assumed habits controls, so the drawer doesn't offer a control that would
-// change nothing.
 export interface RosterPatch {
   inRoster?: boolean;
   active?: boolean;
   starRank?: number;
-  level?: number;
+  /** A dragon's own habit levels (null slot = off / locked); null = back to the default (unlocked by star rank, at the Habit level control). */
+  habitLevels?: (number | null)[] | null;
+}
+
+/** The levels power and synergy use for a dragon, and whether they're its own or the default. */
+export interface DragonHabits {
+  levels: (number | null)[];
+  custom: boolean;
 }
 
 export interface RosterDrawerProps {
@@ -22,6 +30,7 @@ export interface RosterDrawerProps {
   onClose: () => void;
   /** All 36 catalog dragons, carrying the player's overrides. */
   dragons: Dragon[];
+  habits: Record<string, DragonHabits>;
   inRoster: Set<string>;
   onChange: (id: string, patch: RosterPatch) => void;
   onBulk: (action: "addAll" | "removeAll" | "activateAll" | "benchAll", ids: string[]) => void;
@@ -54,21 +63,90 @@ function StarInput({ value, onChange, label }: { value: number; onChange: (n: nu
   );
 }
 
+/**
+ * H1–H5 for one dragon: star-locked habits show their unlock star; unlocked
+ * ones switch on/off (the H label) and take a level 1–5 (the pips). The
+ * first edit turns the shown levels into the dragon's own.
+ */
+function HabitSwitches({ dragon, habits, onChange }: { dragon: Dragon; habits: DragonHabits; onChange: (levels: (number | null)[] | null) => void }) {
+  const levels = habits.levels;
+  const set = (i: number, lv: number | null) => onChange(levels.map((x, j) => (j === i ? lv : x)));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {UNLOCK.map((s, i) => {
+        if (dragon.starRank < s)
+          return (
+            <span key={i} className="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-line-strong px-1.5 text-[11px] text-ink-faint" title={`Habit ${i + 1} unlocks at ★${s}`}>
+              <Icon name="lock" size={11} /> H{i + 1} <span className="text-[10px]">★{s}</span>
+            </span>
+          );
+        const lv = levels[i];
+        const on = lv != null;
+        return (
+          <span
+            key={i}
+            className={cx(
+              "inline-flex h-7 items-center rounded-md border text-[11px]",
+              on ? "border-line-strong bg-surface-sunken text-ink-muted" : "border-dashed border-line-strong text-ink-faint",
+              !habits.custom && "opacity-80",
+            )}
+          >
+            <button
+              role="switch"
+              aria-checked={on}
+              aria-label={`${dragon.name} Habit ${i + 1}`}
+              title={on ? `Habit ${i + 1} on — click to switch off` : `Habit ${i + 1} off — click to switch on`}
+              onClick={() => set(i, on ? null : 1)}
+              className={cx("h-full cursor-pointer rounded-l-md px-1.5 font-semibold hover:bg-surface-hover", on ? "text-ink" : "text-ink-faint")}
+            >
+              H{i + 1}
+            </button>
+            {on ? (
+              <>
+                <span className="flex">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} aria-label={`${dragon.name} Habit ${i + 1} level ${n}`} onClick={() => set(i, n)} className="cursor-pointer p-[2px]">
+                      <span className={cx("block h-3 w-1.5 rounded-[2px]", lv >= n ? "bg-habit" : "bg-line-strong")} />
+                    </button>
+                  ))}
+                </span>
+                <span className="tnum w-4 pr-1 text-center text-ink">{lv}</span>
+              </>
+            ) : (
+              <span className="pr-1.5 text-[10px]">off</span>
+            )}
+          </span>
+        );
+      })}
+      {habits.custom ? (
+        <button onClick={() => onChange(null)} className="cursor-pointer text-[11px] text-ink-faint underline decoration-dotted underline-offset-2 hover:text-ink" title="Forget these habits and go back to the default: unlocked by star rank, at the Habit level control">
+          Reset
+        </button>
+      ) : (
+        <span className="text-[11px] text-ink-faint" title="Unlocked by star rank, at the Habit level control. Edit any habit to record this dragon's own.">default</span>
+      )}
+    </div>
+  );
+}
+
 /** Slide-over roster customizer. Non-modal on desktop (the page stays live beside it); full-screen sheet on phones. */
-export function RosterDrawer({ open, onClose, dragons, inRoster, onChange, onBulk }: RosterDrawerProps) {
+export function RosterDrawer({ open, onClose, dragons, habits, inRoster, onChange, onBulk }: RosterDrawerProps) {
   const [q, setQ] = React.useState("");
   const [rarity, setRarity] = React.useState<Rarity | "any">("any");
   const [role, setRole] = React.useState<Role | "any">("any");
   const [breed, setBreed] = React.useState<Breed | "any">("any");
   const [show, setShow] = React.useState<"all" | "in" | "out">("all");
-  const list = dragons.filter(
-    (d) =>
-      (rarity === "any" || d.rarity === rarity) &&
-      (role === "any" || d.role === role) &&
-      (breed === "any" || d.breed === breed) &&
-      (show === "all" || (show === "in") === inRoster.has(d.id)) &&
-      d.name.toLowerCase().includes(q.toLowerCase()),
-  );
+  // Grouped by rarity (highest first), A–Z within each, so newly added catalog dragons land with their peers.
+  const list = dragons
+    .filter(
+      (d) =>
+        (rarity === "any" || d.rarity === rarity) &&
+        (role === "any" || d.role === role) &&
+        (breed === "any" || d.breed === breed) &&
+        (show === "all" || (show === "in") === inRoster.has(d.id)) &&
+        d.name.toLowerCase().includes(q.toLowerCase()),
+    )
+    .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || a.name.localeCompare(b.name));
   const ids = list.map((d) => d.id);
   const active = dragons.filter((d) => inRoster.has(d.id) && d.active).length;
   return (
@@ -114,7 +192,7 @@ export function RosterDrawer({ open, onClose, dragons, inRoster, onChange, onBul
       </header>
       <div className="flex items-start gap-2 border-b border-line bg-surface-sunken px-4 py-2 text-[11px] leading-4 text-ink-muted">
         <Icon name="info" size={12} className="mt-0.5 shrink-0 text-habit" />
-        Power = Stars + Habits + Level, from the confirmed tables. Star rank also sets which habits count under "By star rank"; habit levels come from the Assumed habits controls.
+        Power = Stars + Habits + Level (every dragon at Level 50 for now), from the confirmed tables. Habits unlock by star rank at the header's Habit level; set H1–H5 to record a dragon's own. Saved in this browser.
       </div>
       <ul className="flex-1 divide-y divide-line overflow-y-auto overscroll-contain">
         {list.map((d) => {
@@ -146,19 +224,7 @@ export function RosterDrawer({ open, onClose, dragons, inRoster, onChange, onBul
               {inR && (
                 <div className="mt-2.5 grid gap-2 pl-7 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-x-4">
                   <StarInput value={d.starRank} label={`${d.name} star rank`} onChange={(n) => onChange(d.id, { starRank: n })} />
-                  <label className="flex items-center gap-2 text-[11px] text-ink-faint">
-                    Level
-                    <input
-                      type="range" min={1} max={50} value={d.level ?? 1}
-                      onChange={(e) => onChange(d.id, { level: parseInt(e.target.value, 10) })}
-                      className="df-range-sm h-4 w-28 cursor-pointer" aria-label={`${d.name} level`}
-                    />
-                    <input
-                      type="number" min={1} max={50} value={d.level ?? 1}
-                      onChange={(e) => onChange(d.id, { level: Math.max(1, Math.min(50, parseInt(e.target.value || "1", 10))) })}
-                      className="tnum h-7 w-12 rounded-md border border-line-strong bg-surface-sunken px-1.5 text-xs text-ink"
-                    />
-                  </label>
+                  {habits[d.id] && <HabitSwitches dragon={d} habits={habits[d.id]} onChange={(habitLevels) => onChange(d.id, { habitLevels })} />}
                 </div>
               )}
             </li>

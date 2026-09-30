@@ -119,12 +119,6 @@ export const loadoutFromStars =
   (d) =>
     MODEL.HABIT_UNLOCK_STARS.map((stars) => (d.starRank >= stars ? level : null));
 
-/** All 5 habits unlocked at `level` — a dragon's potential, until rosters record which habits you really have. */
-export const allHabitsAt =
-  (level: number): LoadoutFor =>
-  () =>
-    [level, level, level, level, level];
-
 export interface HabitSynergyContext {
   skills: SkillsByDragon;
   loadout: LoadoutFor;

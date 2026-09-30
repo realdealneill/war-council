@@ -7,6 +7,7 @@ import type { FormationEvaluation as EngineEval, PairRecommendation as EnginePai
 import { COMMAND_SLOT, describeClause, type Clause } from "../engine/habitClauses";
 import type { SkillsByDragon } from "../engine/habitSynergy";
 import { dragonPower } from "../engine/power";
+import type { SheetLineupSearch } from "../engine/sheetRating";
 import type { FlankCandidate as EngineCandidate } from "../engine/vanguardFit";
 import type { Dragon as EngineDragon, SynergyCategory } from "../types";
 import type * as UI from "./types";
@@ -83,6 +84,43 @@ export function toUiEval(e: EngineEval): UI.FormationEvaluation {
 export const toUiPair = (p: EnginePair): UI.PairRecommendation => ({ left: toUiDragon(p.left), right: toUiDragon(p.right), eval: toUiEval(p.eval) });
 
 export const toUiCandidate = (c: EngineCandidate): UI.FlankCandidate => ({ dragon: toUiDragon(c.dragon), fits: c.fits, isTrio: c.isTrio, eval: toUiEval(c.eval) });
+
+/** A disjoint sheet-rating search → the squad draft's shapes. Ratings are in seat order (left, vanguard, right). */
+export function toSquadDraft(search: SheetLineupSearch, ms: number, ranAt: number, activeCount: number, focus: EngineDragon | null = null): UI.SquadDraft {
+  const squads = search.ratings.map((r, i): UI.Squad => {
+    const members = r.dragons.map((d): UI.SquadMember => ({
+      slot: d.lane,
+      dragon: toUiDragon(d.dragon),
+      affinity: d.affinity,
+      troopBonus: d.boosted,
+      sheet: d.sheetScore,
+      own: d.selfScore,
+      formation: d.fullScore,
+      stats: d.stats.map((s) => ({ stat: s.stat, base: s.base, afterStars: s.sheet, afterTroop: s.afterAffinity, ownBuffs: s.self, withTeammates: s.full })),
+    })) as UI.Squad["members"];
+    return {
+      rank: i + 1,
+      subtitle: squadSubtitle(i + 1, focus?.name),
+      members,
+      troop: r.troop.troop,
+      formation: r.fullScore,
+      sheet: r.sheetScore,
+      ownBuffs: r.selfScore,
+      fromTeammates: r.synergy,
+      sheetT: r.sheetT,
+      buffedT: r.buffedT,
+      pctOfCeiling: r.index,
+      troopOptions: r.troop.options.map((o) => ({ troop: o.troop, formation: o.fullScore, boosted: o.matches })),
+    };
+  });
+  return { squads, focus: focus && toUiDragon(focus), formationsChecked: search.searched, troopsPerFormation: search.troopsTried, ms, ranAt, activeCount };
+}
+
+function squadSubtitle(rank: number, focus: string | undefined): string {
+  if (focus) return rank === 1 ? `Best with ${focus}` : `No. ${rank} with ${focus} · a different trio`;
+  if (rank === 1) return "Best formation";
+  return rank === 2 ? "Best with no dragon from Squad 1" : `Best with no dragon from Squads 1–${rank - 1}`;
+}
 
 export function vanguardSkillOf(name: string): UI.VanguardSkill | null {
   const v = kitFor(name)?.vanguard;

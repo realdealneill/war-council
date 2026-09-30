@@ -5,14 +5,16 @@ as a from-first-principles alternative to https://dragonfire-formations.com/.
 
 Stack: React 19 + Vite + TypeScript + Tailwind v4 + Convex. The 36-dragon
 *catalog* (species-level attributes — rarity, breed, role, base stats) lives
-in Convex. Your personal *roster* (which dragons you've added, star rank,
-active toggle) is in-memory only for now (the roster state in
-[`src/App.tsx`](src/App.tsx)) — it resets on every reload, starting with
-all 36 dragons in it. There's no roster-saving feature yet; when there is, it should be
-Convex-backed and store just ids/overrides re-joined against the live
-catalog, not a frozen snapshot (a localStorage version of that snapshot
-approach is what this replaced, and it went stale the moment the catalog's
-own defaults changed).
+in Convex. Your personal *roster* (which dragons you've removed, star rank,
+active toggle, and each dragon's own H1–H5 habit levels) is saved in this
+browser's localStorage by
+[`src/hooks/useSavedRoster.ts`](src/hooks/useSavedRoster.ts), so it
+survives a refresh but not a different browser or device. It stores only ids
+and overrides, re-joined against the live catalog on load, never Dragon
+copies (an older localStorage version saved full snapshots and went stale the
+moment the catalog's own defaults changed). A fresh browser starts with all
+36 dragons in it. Syncing across devices would mean moving the same shape to
+Convex.
 
 ## Getting started
 
@@ -182,9 +184,13 @@ Total Power (Stars + Habits + Level) is now fully sourced from confirmed
 data in `src/admin/DragonDetail.tsx` — no more free-tunable guesses for
 Power, though Level's numbers carry the caveat above. Stats' mythic rate
 is still a guess. The Formation Builder uses the same sum for every roster
-dragon's power (`confirmedPower()` in `src/engine/power.ts`), with Level
-from the roster drawer (default 15) and habits from the Assumed habits /
-Habit level controls — the same loadout habit synergy uses.
+dragon's power (`confirmedPower()` in `src/engine/power.ts`), with every
+dragon at Level 50 for now (no Level control) and habits from the roster
+drawer's H1–H5 switches where you've set them, else the habits its star rank
+unlocks, all at the header's Habit level control. That one loadout also feeds habit synergy and the
+squad draft. A dragon's own habits respect star locks (H1 at ★2, H2 at ★4,
+and so on). Raising its star rank starts newly unlocked habits at level 1,
+and lowering it drops the ones that lock.
 
 The formation page also has a **Dev · Sheet stat rating** card
 (`src/engine/sheetRating.ts`). It is a preview and does not feed the score.
@@ -201,12 +207,39 @@ uses its own +7% of power per matching dragon. The card's index divides the
 formation by a theoretical ceiling (highest ★1 base in the roster, grown as
 a legendary at ★10, then ×1.2 for troop affinity, in the same seats). Its
 T-score compares the seated dragons with the rest of the roster; the roster
-side has no troop. The Vanguard picker does not run that search on its own.
-A button on the landing page scores every flank pair around each recommended
-Vanguard (tank or champion), under all four troops, and lists three disjoint
-formations: the best, then the best that shares no dragon with it, then the
-best that shares no dragon with either. Change the roster first, then
-calculate.
+side has no troop, and the roster side is the active pool.
+
+The same rating drives the **Squad draft** panel at the top of the page
+(`src/ui/SquadDraft.tsx`, from the design system's Squad draft section,
+reshaped by `toSquadDraft()` in `src/ui/adapt.ts`). It has two modes, and
+each keeps its own last result:
+
+- **Top 5 squads** (`searchDisjointSheetFormations`) scores every flank pair
+  around each recommended Vanguard (tank or champion), under all four troops.
+  It keeps five disjoint formations: the best, then each next best that uses
+  none of the dragons above it. That's 14,280 formations on 36 dragons, about
+  11–15 s in dev.
+- **Around one dragon** (`searchSheetFormationsWith`) scores only the
+  formations that include the chosen dragon, in any seat it can take (the
+  Vanguard seat only if it's a tank or champion). It keeps the five best
+  *different trios*: a trio's best seating counts once and its reseatings are
+  skipped, so any two results differ by at least one dragon. The chosen
+  dragon can appear in all five. That's 816 formations for a non-Vanguard, about
+  1 s.
+
+Both are manual. They run in a Web Worker (`src/engine/draftWorker.ts`,
+driven by `src/hooks/useDraftWorker.ts`), so the page stays usable. The
+exact formation count is known before the run (`disjointFormationCount` /
+`formationsWithCount`). The worker reports progress about 200 times, which
+drives a real progress bar with a time-remaining estimate at the pace so far,
+plus a Cancel button that keeps the previous result. The worker gets plain
+data only: the roster snapshot, the habit clauses, and each dragon's resolved
+habit levels, since the page's loadout function can't be sent. Roster or habit
+edits made during or after a run stamp the squads out of date and list what
+changed. Level and emphasis
+don't, since they don't touch the four stats. "Open in builder" seats a squad
+and locks the power score to its troop (`FormationContext.troop`) until you
+release it.
 
 ## `reference/`
 

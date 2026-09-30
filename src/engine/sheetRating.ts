@@ -20,6 +20,9 @@ import type { LoadoutFor, SkillsByDragon } from "./habitSynergy";
 import type { Affinity, DamageType, Dragon, Placement, Rarity, TroopType } from "../types";
 
 export const STATS = ["strength", "instinct", "intelligence", "initiative"] as const;
+
+/** Tank and Champion are the two archetypes the game itself steers into the Vanguard slot. */
+export const isRecommendedVanguard = (d: Pick<Dragon, "role" | "breed">) => d.role === "tank" || d.breed === "champion";
 export type StatName = (typeof STATS)[number];
 
 export const STAT_LABEL: Record<StatName, string> = {
@@ -1085,14 +1088,15 @@ export interface SheetLineupSearch {
   vanguardCount: number;
   /** Other active dragons available for the two flanks. */
   flankCount: number;
-  /** Formations scored: vanguards × flank pairs, both left/right orders. */
+  /** Seatings scored (each left/right order counts once). */
   searched: number;
   /** Troops tried for each formation. The kept score is the best of these. */
   troopsTried: number;
   /**
-   * Best formation, then the best that shares no dragon with it, then the best
-   * that shares no dragon with either. Fewer than 3 when the roster runs out
-   * of recommended vanguards or of dragons.
+   * Best first. Disjoint search: each later hit shares no dragon with the ones
+   * above. "With" search: each is a different trio that includes the focus
+   * dragon. Fewer than asked for when the roster runs out of recommended
+   * vanguards or of dragons.
    */
   hits: SheetLineupHit[];
   /** Full writeup for each hit, same function the formation dev card uses. */
@@ -1109,26 +1113,17 @@ export function searchDisjointSheetFormations(
   pool: Dragon[],
   isRecommendedVanguard: (d: Dragon) => boolean,
   ctx: { skills: SkillsByDragon; loadout: LoadoutFor },
-  take = 3,
+  take = 5,
+  onProgress?: SearchProgress,
 ): SheetLineupSearch {
   const vanguards = pool.filter(isRecommendedVanguard);
-  const hits: SheetLineupHit[] = [];
-  let searched = 0;
-  const scoreOpts: SheetRatingOptions = { scoresOnly: true };
-  for (const vanguard of vanguards) {
-    const flanks = pool.filter((d) => d.id !== vanguard.id);
-    for (let i = 0; i < flanks.length; i++) {
-      for (let j = 0; j < flanks.length; j++) {
-        if (i === j) continue;
-        const left = flanks[i];
-        const right = flanks[j];
-        const rating = rateSheetFormation({ left, vanguard, right }, ctx, pool, scoreOpts);
-        hits.push({ left, vanguard, right, full: rating.fullScore, sheet: rating.sheetScore });
-        searched++;
-      }
+  const total = disjointFormationCount(pool, isRecommendedVanguard);
+  const hits = rankSeatings(pool, ctx, total, onProgress, (add) => {
+    for (const vanguard of vanguards) {
+      const flanks = pool.filter((d) => d.id !== vanguard.id);
+      for (const left of flanks) for (const right of flanks) if (left !== right) add(left, vanguard, right);
     }
-  }
-  hits.sort((a, b) => b.full - a.full || b.sheet - a.sheet || a.vanguard.name.localeCompare(b.vanguard.name) || a.left.name.localeCompare(b.left.name) || a.right.name.localeCompare(b.right.name));
+  });
   const used = new Set<string>();
   const picked: SheetLineupHit[] = [];
   for (const hit of hits) {
@@ -1138,9 +1133,92 @@ export function searchDisjointSheetFormations(
     for (const id of ids) used.add(id);
     if (picked.length === take) break;
   }
-  const flankCount = Math.max(0, pool.length - 1);
+  return finish(pool, ctx, vanguards.length, hits.length, picked);
+}
+
+/**
+ * The best formations that include `focus`, in any seat it may take (the
+ * Vanguard seat only when it's a recommended Vanguard). Each hit is a
+ * different trio of dragons: a trio's best seating is kept and its other
+ * seatings are skipped, so any two hits differ by at least one dragon.
+ */
+export function searchSheetFormationsWith(
+  pool: Dragon[],
+  isRecommendedVanguard: (d: Dragon) => boolean,
+  ctx: { skills: SkillsByDragon; loadout: LoadoutFor },
+  focus: Dragon,
+  take = 5,
+  onProgress?: SearchProgress,
+): SheetLineupSearch {
+  const others = pool.filter((d) => d.id !== focus.id);
+  const vanguards = others.filter(isRecommendedVanguard);
+  const focusLeads = isRecommendedVanguard(focus);
+  const total = formationsWithCount(pool, isRecommendedVanguard, focus);
+  const hits = rankSeatings(pool, ctx, total, onProgress, (add) => {
+    if (focusLeads) for (const left of others) for (const right of others) if (left !== right) add(left, focus, right);
+    for (const vanguard of vanguards)
+      for (const other of others) {
+        if (other === vanguard) continue;
+        add(focus, vanguard, other);
+        add(other, vanguard, focus);
+      }
+  });
+  const seen = new Set<string>();
+  const picked: SheetLineupHit[] = [];
+  for (const hit of hits) {
+    const trio = [hit.left.id, hit.vanguard.id, hit.right.id].sort().join();
+    if (seen.has(trio)) continue;
+    seen.add(trio);
+    picked.push(hit);
+    if (picked.length === take) break;
+  }
+  return finish(pool, ctx, vanguards.length + (focusLeads ? 1 : 0), hits.length, picked);
+}
+
+/** Exactly how many seatings searchDisjointSheetFormations() scores: V × (n−1) × (n−2). */
+export function disjointFormationCount(pool: Dragon[], isRecommendedVanguard: (d: Dragon) => boolean): number {
+  const n = pool.length;
+  return n >= 3 ? pool.filter(isRecommendedVanguard).length * (n - 1) * (n - 2) : 0;
+}
+
+/** Exactly how many seatings searchSheetFormationsWith() scores for `focus`. */
+export function formationsWithCount(pool: Dragon[], isRecommendedVanguard: (d: Dragon) => boolean, focus: Dragon): number {
+  const n = pool.filter((d) => d.id !== focus.id).length;
+  const v = pool.filter((d) => d.id !== focus.id && isRecommendedVanguard(d)).length;
+  return (isRecommendedVanguard(focus) ? n * (n - 1) : 0) + v * 2 * (n - 1);
+}
+
+/** Called as a search scores seatings: `done` of `total` (known before the first one). */
+export type SearchProgress = (done: number, total: number) => void;
+
+/**
+ * Score every seating `visit` adds (all four troops each, best kept), highest
+ * first. Every seating costs about the same, so done / total is a true share
+ * of the work; progress is reported about 200 times per search.
+ */
+function rankSeatings(
+  pool: Dragon[],
+  ctx: { skills: SkillsByDragon; loadout: LoadoutFor },
+  total: number,
+  onProgress: SearchProgress | undefined,
+  visit: (add: (left: Dragon, vanguard: Dragon, right: Dragon) => void) => void,
+): SheetLineupHit[] {
+  const hits: SheetLineupHit[] = [];
+  const scoreOpts: SheetRatingOptions = { scoresOnly: true };
+  const every = Math.max(25, Math.round(total / 200));
+  visit((left, vanguard, right) => {
+    const rating = rateSheetFormation({ left, vanguard, right }, ctx, pool, scoreOpts);
+    hits.push({ left, vanguard, right, full: rating.fullScore, sheet: rating.sheetScore });
+    if (onProgress && hits.length % every === 0) onProgress(hits.length, total);
+  });
+  onProgress?.(hits.length, total);
+  return hits.sort((a, b) => b.full - a.full || b.sheet - a.sheet || a.vanguard.name.localeCompare(b.vanguard.name) || a.left.name.localeCompare(b.left.name) || a.right.name.localeCompare(b.right.name));
+}
+
+/** Full writeups for the picked hits, same function the formation dev card uses. */
+function finish(pool: Dragon[], ctx: { skills: SkillsByDragon; loadout: LoadoutFor }, vanguardCount: number, searched: number, picked: SheetLineupHit[]): SheetLineupSearch {
   const ratings = picked.map((h) => rateSheetFormation({ left: h.left, vanguard: h.vanguard, right: h.right }, ctx, pool));
-  return { vanguardCount: vanguards.length, flankCount, searched, troopsTried: FORMATION_TROOPS.length, hits: picked, ratings };
+  return { vanguardCount, flankCount: Math.max(0, pool.length - 1), searched, troopsTried: FORMATION_TROOPS.length, hits: picked, ratings };
 }
 
 /** One dragon's unbuffed score with no lane weights, for the roster T-score. */

@@ -12,12 +12,14 @@
 import { NON_SIEGE_TROOP_OPTIONS } from "./constants";
 import { habitSynergy, type HabitLink, type HabitSynergyContext } from "./habitSynergy";
 import { bestArmy } from "./scoring";
-import type { ArmyEvaluation, Dragon, Goal, Placement, Slot } from "../types";
+import type { ArmyEvaluation, Dragon, Goal, Placement, Slot, TroopType } from "../types";
 
 export interface FormationContext {
   habits: HabitSynergyContext;
   emphasis: number;
   goal?: Goal;
+  /** Field only this troop instead of picking the best (the squad draft's troop lock). */
+  troop?: TroopType;
 }
 
 export interface FormationEvaluation extends ArmyEvaluation {
@@ -33,7 +35,7 @@ export function evaluateFormation(p: Partial<Placement>, ctx: FormationContext):
   const locks: Partial<Record<Slot, Dragon>> = {};
   (["left", "vanguard", "right"] as Slot[]).forEach((s) => p[s] && (locks[s] = p[s]!));
   const dragons = Object.values(locks);
-  const structural = bestArmy(dragons, NON_SIEGE_TROOP_OPTIONS, { goal: ctx.goal ?? "balanced", kitTags: false }, locks);
+  const structural = bestArmy(dragons, ctx.troop ? [ctx.troop] : NON_SIEGE_TROOP_OPTIONS,{ goal: ctx.goal ?? "balanced", kitTags: false }, locks);
   const habit = habitSynergy(structural.placement, { ...ctx.habits, goal: ctx.goal });
   const bonusPct = structural.bonusPct + habit.pct;
   return {

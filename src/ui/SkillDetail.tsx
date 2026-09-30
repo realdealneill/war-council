@@ -10,7 +10,7 @@ const UNLOCK = [2, 4, 6, 8, 10];
 export interface SkillDetailProps {
   dragon: Dragon;
   skills: SkillSummary[];
-  controls: Pick<Controls, "habitAssumption" | "habitLevel">;
+  controls: Pick<Controls, "habitLevel">;
   onClose: () => void;
 }
 
@@ -47,11 +47,11 @@ export function SkillDetail({ dragon, skills, controls, onClose }: SkillDetailPr
           </button>
         </header>
         <p className="px-4 pt-3 text-[11px] text-ink-faint">
-          Shown at habit level {controls.habitLevel} · {controls.habitAssumption === "all" ? "all 5 habits assumed unlocked" : `habits unlocked by star rank (★${dragon.starRank})`}
+          Shown at habit level {controls.habitLevel} · habits unlocked by star rank (★{dragon.starRank})
         </p>
         <ol className="space-y-2 p-4">
           {skills.map((s) => {
-            const locked = s.habitSlot > 0 && controls.habitAssumption === "stars" && dragon.starRank < UNLOCK[s.habitSlot - 1];
+            const locked = s.habitSlot > 0 && dragon.starRank < UNLOCK[s.habitSlot - 1];
             return (
               <li key={s.habitSlot} className={cx("rounded-md border border-line bg-surface-raised p-3", locked && "opacity-55")}>
                 <div className="flex items-center justify-between gap-2">

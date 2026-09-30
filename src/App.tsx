@@ -3,33 +3,35 @@
 // real engine: src/engine/formation.ts for scores, pairs and candidates,
 // habitSynergy.ts for the habit links, src/ui/adapt.ts to reshape them.
 //
-// The roster is in-memory only (resets on reload) and starts with every
-// catalog dragon in it. When it's saved for real, store just ids/overrides
-// and re-join against the live catalog, not frozen Dragon copies.
+// The roster starts with every catalog dragon in it. Edits (removed ids and
+// per-dragon overrides, never Dragon copies) are saved in this browser by
+// useSavedRoster and re-joined against the live catalog on load.
 import * as React from "react";
 import { evaluateFormation, recommendFlankPairs, withEmphasis, type FormationContext } from "./engine/formation";
-import { rateSheetFormation, searchDisjointSheetFormations, type SheetLineupSearch } from "./engine/sheetRating";
-import { allHabitsAt, loadoutFromStars, type SkillsByDragon } from "./engine/habitSynergy";
+import { disjointFormationCount, formationsWithCount, isRecommendedVanguard, rateSheetFormation } from "./engine/sheetRating";
+import { useDraftWorker } from "./hooks/useDraftWorker";
+import { loadoutFromStars, type LoadoutFor, type SkillsByDragon } from "./engine/habitSynergy";
 import { confirmedPower } from "./engine/power";
 import { flankDamageType, rankFlankCandidates } from "./engine/vanguardFit";
 import { useCatalog } from "./hooks/useCatalog";
 import { useHabitSkills } from "./hooks/useHabitSkills";
+import { useSavedRoster, type RosterOverride } from "./hooks/useSavedRoster";
 import type { Dragon as EngineDragon } from "./types";
-import { skillSummaries, toUiCandidate, toUiDragon, toUiEval, toUiPair, vanguardSkillOf } from "./ui/adapt";
+import { skillSummaries, toSquadDraft, toUiCandidate, toUiDragon, toUiEval, toUiPair, vanguardSkillOf } from "./ui/adapt";
 import { HabitLinkTable, RoundTimeline, ScoreMath, StructuralBreakdown, WarningList } from "./ui/Breakdown";
 import { SheetDevCard } from "./ui/SheetDevCard";
-import { SheetLineup } from "./ui/SheetLineup";
 import { Button, Eyebrow, Panel, Skeleton } from "./ui/Chips";
 import { ControlsBar, EmphasisSlider } from "./ui/ControlsBar";
 import { FormationBoard, LinkLegend } from "./ui/FormationBoard";
 import { Icon } from "./ui/Icon";
 import { CandidateTabs, EmphasisFan, FlankCandidateList, PairRecommendations, pairKey } from "./ui/Rankings";
-import { RosterDrawer, type RosterPatch } from "./ui/RosterDrawer";
+import { HABIT_UNLOCK, RosterDrawer, type RosterPatch } from "./ui/RosterDrawer";
 import { SkillDetail } from "./ui/SkillDetail";
+import { SquadDetail, SquadDraftPanel, TroopLockBanner, type DraftMode } from "./ui/SquadDraft";
 import { VanguardHero } from "./ui/VanguardHero";
 import { VanguardPicker } from "./ui/VanguardPicker";
 import { DAMAGE_LABEL, cx } from "./ui/format";
-import type { Controls, Dragon, FlankCandidate, FormationEvaluation, PairRecommendation, Placement, Slot } from "./ui/types";
+import type { Controls, DraftStatus, Dragon, FlankCandidate, FormationEvaluation, PairRecommendation, Placement, Slot, Squad, SquadDraft, TroopType } from "./ui/types";
 
 const NO_SKILLS: SkillsByDragon = {};
 const ADMIN_LINKS = [
@@ -38,8 +40,16 @@ const ADMIN_LINKS = [
   { href: "/admin/habit-builder", label: "Habit Builder" },
 ];
 
-/** Tank and Champion are the two archetypes the game itself steers into the Vanguard slot. */
-const isRecommendedVanguard = (d: Dragon) => d.role === "tank" || d.breed === "champion";
+/** Squads a draft keeps, in either mode. */
+const DRAFT_TAKE = 5;
+
+/** What the last squad draft ran on, so later edits can be listed as the reasons it's out of date. */
+interface DraftBasis {
+  pool: Map<string, { name: string; starRank: number; bases: string; habits: string; custom: boolean }>;
+  habitLevel: Controls["habitLevel"];
+  skills: SkillsByDragon | undefined;
+}
+const basesOf = (d: EngineDragon) => [d.baseStrength, d.baseInstinct, d.baseIntelligence, d.baseInitiative].join(",");
 
 function useMedia(q: string) {
   const [m, setM] = React.useState(() => window.matchMedia(q).matches);
@@ -86,8 +96,8 @@ function AdminMenu() {
   );
 }
 
-// reignLevel is the dragon's Level (1-50), which Power from Level reads.
-type Override = { starRank?: number; reignLevel?: number; active?: boolean };
+/** Every dragon is scored at max Level for now; Power from Level reads reignLevel. */
+const LEVEL = 50;
 
 function App() {
   const phone = useMedia("(max-width: 767px)");
@@ -95,10 +105,10 @@ function App() {
   const { catalog, loading: catalogLoading } = useCatalog();
   const { skills, loading: skillsLoading } = useHabitSkills();
 
-  // Every catalog dragon starts in the roster; this tracks the ones taken out.
-  const [removed, setRemoved] = React.useState<Set<string>>(() => new Set());
-  const [overrides, setOverrides] = React.useState<Record<string, Override>>({});
-  const [controls, setControls] = React.useState<Controls>({ emphasis: 1, habitAssumption: "all", habitLevel: 5 });
+  // Every catalog dragon starts in the roster; this tracks the ones taken out,
+  // plus per-dragon edits. Saved in this browser (useSavedRoster).
+  const { removed, setRemoved, overrides, setOverrides } = useSavedRoster();
+  const [controls, setControls] = React.useState<Controls>({ emphasis: 1, habitLevel: 5 });
   const [vgId, setVgId] = React.useState<string | null>(null);
   const [leftId, setLeftId] = React.useState<string | null>(null);
   const [rightId, setRightId] = React.useState<string | null>(null);
@@ -110,49 +120,130 @@ function App() {
   const [lane, setLane] = React.useState<"left" | "right">("left");
   const [skillFor, setSkillFor] = React.useState<Dragon | null>(null);
   const [controlsOpen, setControlsOpen] = React.useState(false);
-  const [lineup, setLineup] = React.useState<SheetLineupSearch | null>(null);
-  const [lineupMs, setLineupMs] = React.useState<number | null>(null);
-  const [lineupRunning, setLineupRunning] = React.useState(false);
-  const [lineupKeyUsed, setLineupKeyUsed] = React.useState<string | null>(null);
+  // Squad draft (combat rating): manual runs only.
+  const [draftMode, setDraftMode] = React.useState<DraftMode>("top");
+  const [focusId, setFocusId] = React.useState<string | null>(null);
+  // Each mode (and each dragon drafted around) keeps its own last run.
+  const [drafts, setDrafts] = React.useState<Record<string, { draft: SquadDraft; basis: DraftBasis }>>({});
+  const draftWorker = useDraftWorker();
+  const draftRunning = draftWorker.progress != null;
+  const [draftCollapsed, setDraftCollapsed] = React.useState(false);
+  // Measured in this browser by the last run; null until then, so no made-up estimate is shown.
+  const [msPerFormation, setMsPerFormation] = React.useState<number | null>(null);
+  const [squadDetail, setSquadDetail] = React.useState<Squad | null>(null);
+  const [lock, setLock] = React.useState<{ troop: TroopType; rank: number; ids: string[]; locked: boolean; draftKey: string } | null>(null);
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
-  // One habit loadout for both power and synergy, so they always agree.
-  const loadout = React.useMemo(
-    () => (controls.habitAssumption === "all" ? allHabitsAt(controls.habitLevel) : loadoutFromStars(controls.habitLevel)),
-    [controls.habitAssumption, controls.habitLevel]
-  );
+  // One habit loadout for power, synergy and the squad draft, so they always
+  // agree: a dragon's own habits from the roster, else the habits its star
+  // rank unlocks, all at the Habit level control.
+  const assumed = React.useMemo(() => loadoutFromStars(controls.habitLevel), [controls.habitLevel]);
+  const loadout = React.useMemo<LoadoutFor>(() => (d) => overrides[d.id]?.habitLevels ?? assumed(d), [assumed, overrides]);
   // Engine dragons with the roster's overrides applied and their real power
   // (Stars + Habits + Level, from the confirmed tables) set.
   const dragons = React.useMemo<EngineDragon[]>(
     () =>
       catalog.map((c) => {
-        const d = { ...c, ...overrides[c.id] };
+        const { starRank, active } = overrides[c.id] ?? {};
+        const d = { ...c, reignLevel: LEVEL, ...(starRank !== undefined && { starRank }), ...(active !== undefined && { active }) };
         return { ...d, power: confirmedPower(d, loadout(d)) ?? 0 };
       }),
     [catalog, overrides, loadout]
   );
   const uiDragons = React.useMemo(() => dragons.map(toUiDragon), [dragons]);
+  const habitsById = React.useMemo(
+    () => Object.fromEntries(dragons.map((d) => [d.id, { levels: loadout(d), custom: !!overrides[d.id]?.habitLevels }])),
+    [dragons, loadout, overrides]
+  );
   const inRoster = React.useMemo(() => new Set(dragons.filter((d) => !removed.has(d.id)).map((d) => d.id)), [dragons, removed]);
   const pool = React.useMemo(() => dragons.filter((d) => inRoster.has(d.id) && d.active !== false), [dragons, inRoster]);
-  // The landing search is manual. This key only marks an old result stale.
-  const lineupKey = React.useMemo(
-    () => pool.map((d) => `${d.id}:${d.starRank}:${d.reignLevel}:${d.power}`).join("|") + `\n${controls.habitAssumption}:${controls.habitLevel}`,
-    [pool, controls.habitAssumption, controls.habitLevel],
-  );
-  const calculateLineup = () => {
-    if (!skills || pool.length < 3 || lineupRunning) return;
-    const key = lineupKey;
-    const roster = pool;
-    const habitSkills = skills;
-    setLineupRunning(true);
-    window.setTimeout(() => {
-      const t0 = performance.now();
-      const found = searchDisjointSheetFormations(roster, (d) => d.role === "tank" || d.breed === "champion", { skills: habitSkills, loadout });
-      setLineup(found);
-      setLineupMs(Math.round(performance.now() - t0));
-      setLineupKeyUsed(key);
-      setLineupRunning(false);
-    }, 0);
+  // ---- squad draft: the four-stat rating from engine/sheetRating.ts, beside the power score
+  // "top": the best DRAFT_TAKE squads with no dragon shared. "with": the best
+  // DRAFT_TAKE different trios that include the focus dragon, in any seat.
+  const focusDragon = draftMode === "with" && focusId ? (pool.find((d) => d.id === focusId) ?? null) : null;
+  const draftKey = draftMode === "top" ? "top" : `with:${focusId ?? ""}`;
+  const draft = drafts[draftKey]?.draft ?? null;
+  const draftBasis = drafts[draftKey]?.basis ?? null;
+  const focusOptions = React.useMemo(() => [...pool].sort((a, b) => a.name.localeCompare(b.name)).map(toUiDragon), [pool]);
+  const draftSpace = React.useMemo(() => {
+    const v = pool.filter(isRecommendedVanguard).length;
+    const n = pool.length;
+    if (draftMode === "with") return { vanguards: v, formations: focusDragon && n >= 3 ? formationsWithCount(pool, isRecommendedVanguard, focusDragon) : 0, troops: 4 };
+    return { vanguards: v, formations: disjointFormationCount(pool, isRecommendedVanguard), troops: 4 };
+  }, [pool, draftMode, focusDragon]);
+  const draftEstimate = msPerFormation == null ? null : Math.round(draftSpace.formations * msPerFormation);
+  const draftBlocked = catalogLoading
+    ? "Dragon catalog is still loading"
+    : !skills
+      ? "Waiting for habit data to finish loading"
+      : pool.length < 3
+        ? `Needs 3 active dragons — ${pool.length} active`
+        : draftSpace.vanguards === 0
+          ? "No active tank or champion for the Vanguard seat"
+          : draftMode === "with" && !focusId
+            ? "Pick a dragon to draft around"
+            : draftMode === "with" && !focusDragon
+              ? `${dragons.find((d) => d.id === focusId)?.name ?? "That dragon"} isn't active in the roster`
+              : draftMode === "with" && draftSpace.formations === 0
+                ? `No other tank or champion to hold the Vanguard seat for ${focusDragon!.name}`
+                : null;
+  // Level and emphasis don't change the four stats, so they never make a draft stale.
+  const draftChanges = React.useMemo(() => {
+    if (!draftBasis) return [];
+    const out: string[] = [];
+    const current = new Map(pool.map((d) => [d.id, d]));
+    for (const [id, was] of draftBasis.pool) {
+      const d = current.get(id);
+      if (!d) out.push(`${was.name} ${removed.has(id) ? "removed" : "benched"}`);
+      else {
+        if (d.starRank !== was.starRank) out.push(`${was.name} ★${was.starRank} → ★${d.starRank}`);
+        if (basesOf(d) !== was.bases) out.push(`${was.name} base stats edited`);
+        // Assumed-habit dragons move with the controls, which get their own line below.
+        if ((was.custom || overrides[id]?.habitLevels) && loadout(d).join() !== was.habits) out.push(`${was.name} habits changed`);
+      }
+    }
+    for (const d of pool) if (!draftBasis.pool.has(d.id)) out.push(`${d.name} added`);
+    if (controls.habitLevel !== draftBasis.habitLevel) out.push(`Habit level ${draftBasis.habitLevel} → ${controls.habitLevel}`);
+    if (skills !== draftBasis.skills) out.push("Habit clause data updated");
+    return out;
+  }, [draftBasis, pool, removed, overrides, loadout, controls.habitLevel, skills]);
+  const draftStatus: DraftStatus = draftWorker.progress
+    ? { kind: "running", ...draftWorker.progress }
+    : draft && draftChanges.length
+      ? { kind: "stale", draft, changes: draftChanges }
+      : draft
+        ? { kind: "ready", draft }
+        : draftBlocked
+          ? { kind: "blocked", reason: draftBlocked }
+          : { kind: "idle", error: draftWorker.error ?? undefined };
+  // The search runs in a worker on a snapshot of the roster as it is at the
+  // click; edits made meanwhile show up as reasons the result is out of date.
+  const runDraft = () => {
+    if (draftBlocked || draftRunning || !skills) return;
+    const key = draftKey;
+    const focus = focusDragon;
+    const activeCount = pool.length;
+    const basis: DraftBasis = {
+      pool: new Map(pool.map((d) => [d.id, { name: d.name, starRank: d.starRank, bases: basesOf(d), habits: loadout(d).join(), custom: !!overrides[d.id]?.habitLevels }])),
+      habitLevel: controls.habitLevel,
+      skills,
+    };
+    const habits = Object.fromEntries(pool.map((d) => [d.id, loadout(d)]));
+    draftWorker.run({ pool, skills, habits, focusId: focus?.id ?? null, take: DRAFT_TAKE }, draftSpace.formations, (search, ms) => {
+      setDrafts((prev) => ({ ...prev, [key]: { draft: toSquadDraft(search, ms, Date.now(), activeCount, focus), basis } }));
+      if (search.searched) setMsPerFormation(ms / search.searched);
+      setDraftCollapsed(false);
+      setNow(Date.now());
+    });
   };
+  const unavailable = React.useMemo(
+    () => new Set((draft?.squads ?? []).flatMap((s) => s.members.map((m) => m.dragon.id)).filter((id) => !pool.some((d) => d.id === id))),
+    [draft, pool]
+  );
   const byId = (id: string | null) => (id ? (pool.find((d) => d.id === id) ?? null) : null);
   const vanguard = byId(vgId);
   const left = byId(leftId);
@@ -201,10 +292,20 @@ function App() {
         .map(toUiCandidate),
     [evaluatedCandidates, emphasis]
   );
+  // After "Open in builder" the squad's troop stays in charge of the placed
+  // formation until the player lets go (TroopLockBanner).
+  const lockedTroop = lock?.locked ? lock.troop : undefined;
   const placedEvaluation = React.useMemo(
-    () => (vanguard && left && right ? evaluateFormation({ left, vanguard, right }, ctx) : null),
-    [vanguard, left, right, ctx]
+    () => (vanguard && left && right ? evaluateFormation({ left, vanguard, right }, lockedTroop ? { ...ctx, troop: lockedTroop } : ctx) : null),
+    [vanguard, left, right, ctx, lockedTroop]
   );
+  const lockCompare = React.useMemo(() => {
+    if (!lock || !vanguard || !left || !right) return null;
+    const auto = evaluateFormation({ left, vanguard, right }, ctx);
+    const forced = evaluateFormation({ left, vanguard, right }, { ...ctx, troop: lock.troop });
+    return { autoTroop: (auto.troopType ?? lock.troop) as TroopType, autoScore: auto.score, lockedScore: forced.score };
+  }, [lock, vanguard, left, right, ctx]);
+  const lockSeatsIntact = !!lock && lock.ids.join() === [leftId, vgId, rightId].join();
   const placedEval = React.useMemo(() => (placedEvaluation ? toUiEval(withEmphasis(placedEvaluation, emphasis)) : null), [placedEvaluation, emphasis]);
   // With one flank placed, preview the best dragon for the empty one.
   const emptyFlank: "left" | "right" | null = vanguard && (left ? !right : right) ? (left ? "right" : "left") : null;
@@ -259,9 +360,10 @@ function App() {
         right: find(focus.placement.right?.id),
       },
       { skills: skills ?? NO_SKILLS, loadout },
-      dragons,
+      // The active pool, the same population the squad draft's T-score and ceiling use.
+      pool,
     );
-  }, [focus, dragons, skills, loadout]);
+  }, [focus, dragons, pool, skills, loadout]);
   const focusIsPlaced = focusLabel === "Placed";
   const dragonsByName = React.useMemo(() => Object.fromEntries(uiDragons.map((d) => [d.name, d])), [uiDragons]);
 
@@ -271,7 +373,22 @@ function App() {
     setLeftId(null);
     setRightId(null);
     setPicking(false);
+    setLock(null);
     setLane(vanguardSkillOf(d.name)?.flankPos ?? "left");
+  };
+  const openSquad = (sq: Squad) => {
+    const [l, v, r] = sq.members.map((m) => m.dragon.id);
+    setVgId(v);
+    setLeftId(l);
+    setRightId(r);
+    setPicking(false);
+    setLock({ troop: sq.troop, rank: sq.rank, ids: [l, v, r], locked: true, draftKey });
+    setSquadDetail(null);
+    setHoverCand(null);
+    setHoverPair(null);
+    setDraftCollapsed(true);
+    setLane("left");
+    window.scrollTo({ top: 0 });
   };
   const place = (slot: "left" | "right", d: Dragon) => {
     if (slot === "left") {
@@ -304,11 +421,21 @@ function App() {
         else n.add(id);
         return n;
       });
-    const o: Override = {};
-    if (p.active !== undefined) o.active = p.active;
-    if (p.starRank !== undefined) o.starRank = p.starRank;
-    if (p.level !== undefined) o.reignLevel = p.level;
-    if (Object.keys(o).length) setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...o } }));
+    if (p.active === undefined && p.starRank === undefined && p.habitLevels === undefined) return;
+    const wasStars = dragons.find((d) => d.id === id)?.starRank ?? 1;
+    setOverrides((prev) => {
+      const o: RosterOverride = { ...prev[id] };
+      if (p.active !== undefined) o.active = p.active;
+      if (p.habitLevels === null) delete o.habitLevels;
+      else if (p.habitLevels) o.habitLevels = p.habitLevels;
+      if (p.starRank !== undefined) {
+        o.starRank = p.starRank;
+        // Own habits follow the new star rank: newly locked ones drop out, newly unlocked ones start at level 1.
+        const stars = p.starRank;
+        if (o.habitLevels) o.habitLevels = o.habitLevels.map((l, i) => (stars < HABIT_UNLOCK[i] ? null : wasStars < HABIT_UNLOCK[i] ? 1 : l));
+      }
+      return { ...prev, [id]: o };
+    });
   };
   const bulk = (a: "addAll" | "removeAll" | "activateAll" | "benchAll", ids: string[]) => {
     if (a === "addAll") setRemoved((s) => new Set([...s].filter((x) => !ids.includes(x))));
@@ -389,7 +516,7 @@ function App() {
         <Icon name="roster" size={28} className="mx-auto text-ink-muted" />
         <h1 className="mt-3 font-display text-2xl font-semibold text-ink">{inRoster.size === 0 ? "Your roster is empty" : "Every dragon is benched"}</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Recommendations only use dragons in your roster that are marked active. Add the dragons you own, set their star rank, and the builder ranks formations from them.
+          Recommendations only use dragons in your roster that are marked active. Add the dragons you own, set their star rank, and the builder ranks formations from them — the squad draft needs at least 3 active dragons too.
         </p>
         <div className="mt-5 flex justify-center gap-2">
           <Button variant="primary" onClick={() => setRosterOpen(true)}>
@@ -403,33 +530,15 @@ function App() {
     );
   } else if (!vanguard || !uiVanguard || !vgSkill || picking) {
     body = (
-      <div className="flex flex-col gap-5">
-        <SheetLineup
-          search={lineup}
-          ms={lineupMs}
-          running={lineupRunning}
-          stale={lineup != null && lineupKeyUsed !== lineupKey}
-          canRun={Boolean(skills) && pool.length >= 3}
-          onCalculate={calculateLineup}
-          onUse={(index) => {
-            const hit = lineup?.hits[index];
-            if (!hit) return;
-            setVgId(hit.vanguard.id);
-            setLeftId(hit.left.id);
-            setRightId(hit.right.id);
-            setPicking(false);
-          }}
-        />
-        <VanguardPicker
-          dragons={pool.map(toUiDragon)}
-          skillOf={(d) => vanguardSkillOf(d.name) ?? { selfText: "—", flankPos: "left", flankText: "—" }}
-          flankDamageOf={(d) => flankDamageType(d.name) as Dragon["damageType"] | null}
-          isRecommended={isRecommendedVanguard}
-          onPick={pickVanguard}
-          onCancel={vanguard ? () => setPicking(false) : undefined}
-          currentId={vanguard?.id}
-        />
-      </div>
+      <VanguardPicker
+        dragons={pool.map(toUiDragon)}
+        skillOf={(d) => vanguardSkillOf(d.name) ?? { selfText: "—", flankPos: "left", flankText: "—" }}
+        flankDamageOf={(d) => flankDamageType(d.name) as Dragon["damageType"] | null}
+        isRecommended={isRecommendedVanguard}
+        onPick={pickVanguard}
+        onCancel={vanguard ? () => setPicking(false) : undefined}
+        currentId={vanguard?.id}
+      />
     );
   } else {
     const uiLeft = left && toUiDragon(left);
@@ -503,6 +612,20 @@ function App() {
                 )}
               </div>
             </div>
+            {lock && lockCompare && (
+              <div className="mt-2">
+                <TroopLockBanner
+                  rank={lockSeatsIntact ? lock.rank : null}
+                  troop={lock.troop}
+                  locked={lock.locked}
+                  lockedScore={lockCompare.lockedScore}
+                  autoTroop={lockCompare.autoTroop}
+                  autoScore={lockCompare.autoScore}
+                  onLock={(locked) => setLock({ ...lock, locked })}
+                  onRelease={() => setLock(null)}
+                />
+              </div>
+            )}
             <div className="mt-2">
               <FormationBoard
                 placement={boardPlacement}
@@ -584,13 +707,60 @@ function App() {
     );
   }
 
+  // The squad draft sits above every state but the empty roster. It's a second
+  // way in: opening a squad fills all three seats.
+  const showDraft = catalogLoading || (inRoster.size > 0 && pool.length > 0) || Object.keys(drafts).length > 0;
+  const draftPanel = (
+    <SquadDraftPanel
+      status={draftStatus}
+      space={draftSpace}
+      estimateMs={draftEstimate}
+      now={now}
+      take={DRAFT_TAKE}
+      mode={draftMode}
+      onMode={(m) => {
+        if (draftRunning) return;
+        setDraftMode(m);
+        setDraftCollapsed(false);
+      }}
+      focus={focusDragon && toUiDragon(focusDragon)}
+      focusOptions={focusOptions}
+      onFocus={(id) => {
+        setFocusId(id);
+        setDraftCollapsed(false);
+      }}
+      collapsed={draftCollapsed && !!draft && !draftRunning}
+      onToggle={() => setDraftCollapsed((c) => !c)}
+      onRun={runDraft}
+      onCancel={draftWorker.cancel}
+      onOpen={openSquad}
+      onDetails={setSquadDetail}
+      openedRank={lockSeatsIntact && lock!.draftKey === draftKey ? lock!.rank : null}
+      unavailable={unavailable}
+    />
+  );
+
   return (
     <div className="min-h-screen bg-bg font-sans text-ink">
       {header}
       <main className="@container mx-auto max-w-[1600px] px-4 py-5 transition-[padding] md:px-6" style={rosterOpen && wide ? { paddingRight: 624 } : undefined}>
-        {body}
+        {showDraft ? (
+          <div className="flex flex-col gap-5">
+            {draftPanel}
+            {body}
+          </div>
+        ) : (
+          body
+        )}
       </main>
-      <RosterDrawer open={rosterOpen} onClose={() => setRosterOpen(false)} dragons={uiDragons} inRoster={inRoster} onChange={patch} onBulk={bulk} />
+      <RosterDrawer open={rosterOpen} onClose={() => setRosterOpen(false)} dragons={uiDragons} habits={habitsById} inRoster={inRoster} onChange={patch} onBulk={bulk} />
+      {squadDetail && (
+        <SquadDetail
+          squad={squadDetail}
+          onClose={() => setSquadDetail(null)}
+          onOpen={squadDetail.members.some((m) => unavailable.has(m.dragon.id)) ? undefined : openSquad}
+        />
+      )}
       {skillFor && <SkillDetail dragon={skillFor} skills={skillSummaries(skillFor.name, skills, controls.habitLevel)} controls={controls} onClose={() => setSkillFor(null)} />}
     </div>
   );

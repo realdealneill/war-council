@@ -74,18 +74,6 @@ export function ControlsBar({ controls, onChange, layout = "row" }: { controls: 
       <EmphasisSlider value={controls.emphasis} onChange={(emphasis) => set({ emphasis })} className={layout === "row" ? "w-[340px]" : "w-full"} />
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
         <div>
-          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">Assumed habits</div>
-          <Segmented
-            label="Assumed habits"
-            value={controls.habitAssumption}
-            onChange={(habitAssumption) => set({ habitAssumption })}
-            options={[
-              { value: "all", label: "All 5 unlocked" },
-              { value: "stars", label: "By star rank", title: "Habits unlock at ★2 / ★4 / ★6 / ★8 / ★10" },
-            ]}
-          />
-        </div>
-        <div>
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">Habit level</div>
           <Segmented
             label="Habit level"
@@ -97,7 +85,7 @@ export function ControlsBar({ controls, onChange, layout = "row" }: { controls: 
         </div>
         <p className="flex max-w-[260px] items-start gap-1.5 pb-0.5 text-[11px] leading-4 text-ink-faint">
           <Icon name="info" size={12} className="mt-0.5 shrink-0" />
-          Habit assumptions apply to every dragon until the roster records each one's real habits.
+          Habits unlock by star rank (★2 / 4 / 6 / 8 / 10) at this level, unless a dragon's own H1–H5 are set in the roster.
         </p>
       </div>
     </div>

@@ -115,7 +115,7 @@ export function Button({ variant = "quiet", size = "md", className, children, ..
     <button
       {...rest}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer",
+        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
         variant === "primary" && "bg-ink text-on-ink hover:bg-parchment-hover",
         variant === "quiet" && "border border-line-strong bg-surface-raised text-ink hover:bg-surface-hover",
